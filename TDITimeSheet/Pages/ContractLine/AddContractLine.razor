@@ -1,0 +1,360 @@
+﻿@page "/AddContractLine/{projectCode}"
+@inject ContractLineController wbsService
+@inject ProjectController projectService
+@inject ContractHeaderController contractService
+@inject ContractHeaderController WBheaderService
+
+<EditForm Model="wbs" OnValidSubmit="SaveCountry">
+    @* <div class="mb-3">
+    <label for="ContractCode">Contract Code</label>
+    <div class="">
+    <DxComboBox Data="@a" Id="cbb_ContractCode"
+    ListRenderMode="ListRenderMode.Virtual"
+    FilteringMode="DataGridFilteringMode.Contains"
+    TextFieldName="@nameof(ctrModel.ContractName)"
+    ValueFieldName="@nameof(ctrModel.ContractCode)"
+    @bind-Value="wbs.ContractCode"
+    @bind-Text="wbs.ContractName"
+    CssClass="cw-480" />
+    </div>
+    </div>*@
+    <div class="mb-3">
+        <label for="PrjCode">Project Name</label>
+        <div class="">
+            <DxComboBox Data="@prjs" Id="cbb_PrjCode" ReadOnly=true
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(ProjectModel.PrjName)"
+                        ValueFieldName="@nameof(ProjectModel.PrjCode)"
+                        @bind-Value="wbs.PrjCode"
+                        @bind-Text="wbs.ContractName"
+                        CssClass="cw-480">
+                    </DxComboBox>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="Name">WBS Name</label>
+        <div>
+            <InputText class="form-control" @bind-Value="wbs.LineCode"></InputText>
+        </div>
+
+    </div>
+    @*<div class="mb-3">
+        <label for="Name">Description</label>
+        <div>
+            <InputText class="form-control" @bind-Value="wbs.Description"></InputText>
+        </div>
+
+    </div>*@
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                <div class="">
+                    <label for="Name">StartDate</label>
+                    <DxDateEdit style="font-size:large" PickerDisplayMode="DatePickerDisplayMode.Calendar" @bind-Date="@wbs.StartDate" CssClass="cw-320" />
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                <div class="">
+                    <label for="Name">EndDate</label>
+                    <DxDateEdit style="font-size:large" PickerDisplayMode="DatePickerDisplayMode.Calendar" @bind-Date="@wbs.EndDate" CssClass="cw-320" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="margin-top:20px">
+        <label for="Name">Manday</label>
+        <div>
+            <InputNumber class="form-control" @bind-Value="wbs.Mandays"></InputNumber>
+        </div>
+    </div>
+    @* <div style="margin-top:5px">
+    <label for="Name">Manday Update</label>
+    <div>
+    <InputNumber class="form-control" @bind-Value="wbs.MandaysUpdate"></InputNumber>
+    </div>
+    </div>*@
+   @* <div style="margin-top:5px">
+        <label for="Name">Bill</label>
+        <div>
+            <InputText class="form-control" @bind-Value="wbs.Bill"></InputText>
+        </div>
+    </div>*@
+    @* <div class="mb-3">
+    <label for="Name">Status</label>
+    <div>
+    <InputText class="form-control" @bind-Value="wbs.Status"></InputText>
+    </div>
+
+    </div>*@
+    <div class="row" style="margin-top:10px">
+        <div class="col-md-2"> <label>Bill</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@checkBill"
+                        CheckedExpression="@(() => checkBill)"
+                        CheckedChanged="@((bool value) => CheckedChangedBill(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div class="row"  >
+        <div class="col-md-2"> <label>Status</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-2"> <label>Additional</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@checkAdditional"
+                        CheckedExpression="@(() => checkAdditional)"
+                        CheckedChanged="@((bool value) => CheckedChangedAdditional(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div style="text-align:right;margin-top:10px">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+    </div>
+</EditForm>
+@code {
+    bool check { get; set; }
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            wbs.Status = "A";
+        }
+        else
+        {
+            wbs.Status = "I";
+
+        }
+    }
+
+    bool checkBill { get; set; }
+    void CheckedChangedBill(bool value)
+    {
+        checkBill = value;
+        if (checkBill == true)
+        {
+            wbs.Bill = "Y";
+        }
+        else
+        {
+            wbs.Bill = "N";
+
+        }
+    }
+    bool checkAdditional { get; set; }
+    void CheckedChangedAdditional(bool value)
+    {
+        checkAdditional = value;
+        if (checkAdditional == true)
+        {
+            wbs.Additional = "Y";
+        }
+        else
+        {
+            wbs.Additional = "N";
+
+        }
+    }
+
+
+
+    protected WBSHeaderModel wbs = new()
+        {
+            //StartDate = DateTime.Now,
+            //EndDate = DateTime.Now,
+            //StartDate = header.StartDate,
+            //EndDate = header.EndDate,
+            Status = "A",
+            Bill = "Y" ,
+            Additional = "N"
+
+        };
+    [Parameter] public string Message { get; set; } = "";
+    private List<ProjectModel> prjs = new List<ProjectModel>();
+    [Parameter] public string projectCode { get; set; }
+    public ContractHeaderModel header { get; set; }
+
+    private List<ctrModel> aContractHeader = new List<ctrModel>();
+    private string Username { get; set; }
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadDataHeader();
+
+        wbs.StartDate = header.StartDate;
+        wbs.EndDate = header.EndDate;
+        if(header.Mandays >= 99999)
+        {
+            wbs.Mandays = header.Mandays;
+        }
+
+        var authState = await authenticationState; 
+        Username = authState.User.Identity.Name;
+
+        LoadProject();
+        wbs.PrjCode = prjs.FirstOrDefault().PrjCode;
+        //LoadContract();
+        if (wbs.Status == "A")
+        {
+            check = true;
+        }
+        else
+        {
+            check = false;
+        }
+        if (wbs.Bill == "Y")
+        {
+            checkBill = true;
+        }
+        else
+        {
+            checkBill = false;
+        }
+        if ( wbs.Additional == "Y")
+        {
+            checkAdditional = true;
+        }
+        else
+        {
+            checkAdditional = false;
+        }
+
+    }
+    object DataH { get; set; }
+
+    private async Task LoadDataHeader()
+    {
+        var itemheader = await WBheaderService.GetContractHeader3ByID(Username, projectCode);
+        if (itemheader.Success == true)
+        {
+            header = itemheader.Data as ContractHeaderModel;
+            //DataH = header as ContractHeaderModel;
+        }
+        else
+        {
+            await Swal.FireAsync(
+            "Load Data WBSHeader",
+            itemheader.Message,
+            SweetAlertIcon.Error
+            );
+        }
+    }
+    public async void LoadProject()
+    {
+        var dataPrj = projectService.GetProject_ContractHeader_ForWBS(Username);
+
+        if (dataPrj.Result.Success == true)
+        {
+            var prjs2 = dataPrj.Result.Data as List<ProjectModel>;
+            foreach (var user in prjs2.Where(x => x.PrjCode == projectCode).ToList() )
+            {
+
+                var userMap = user as ProjectModel;
+                prjs.Add(userMap);
+                //string userCode = test.UserName;
+            }
+
+
+            //if (prj.Any())
+            //{
+            //    wbs.PrjName = prj.FirstOrDefault().PrjName;
+
+            //}
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "LoadData",
+             dataPrj.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    //public async void LoadContract()
+    //{
+    //    DateTime fromDate = new DateTime(1900, 01, 01);
+    //    DateTime toDate = new DateTime(2023, 01, 01);
+    //    var dataContract = contractService.GetContractHeader(Username, fromDate, toDate);
+
+
+
+    //    if (dataContract.Result.Success == true)
+    //    {
+    //        aContractHeader = dataContract.Result.Data as List<ctrModel>;
+    //    }
+    //    else
+    //    {
+    //        await Swal.FireAsync(
+    //         "LoadData",
+    //         dataContract.Result.Message,
+    //         SweetAlertIcon.Error
+    //         );
+    //    }
+    //}
+    protected async Task SaveCountry()
+    {
+        //var resultAdd = await wbsService.Create(wbs);
+        //if (resultAdd.Success == true)
+        //{
+        //    SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+        //        {
+        //            Title = "Create Contract Line",
+        //            Text = $"Create Contract Line Successfully Completed",
+        //            Icon = SweetAlertIcon.Success,
+        //            ShowCancelButton = false,
+        //            ConfirmButtonText = $"OK",
+        //            CancelButtonText = "No"
+        //        });
+        //    if (!string.IsNullOrEmpty(result.Value))
+        //    {
+        //        URLHelper.NavigateTo("/ContractLine", true);
+        //    }
+
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Create WBS",
+        //      resultAdd.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+
+        if (string.IsNullOrEmpty(wbs.LineCode))
+        {
+            await Swal.FireAsync(
+             "LoadData",
+             "Please input WBS Name",
+             SweetAlertIcon.Error
+             );
+            return;
+        }
+
+
+        await BlazoredModal.CloseAsync(ModalResult.Ok(wbs));
+
+    }
+
+
+    private async void CancelAdd()
+    {
+        //URLHelper.NavigateTo("/ContractLine");
+        await BlazoredModal.CancelAsync();
+    }
+}

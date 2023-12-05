@@ -1,0 +1,450 @@
+﻿@page "/users"
+
+@attribute [Authorize]
+
+@inject TDI.Application.Interfaces.IUserService userService
+@inject TDI.Application.Interfaces.IRolesService roleService
+@inject TDI.Application.Interfaces.ICountryService countryService
+@inject TDI.Application.Interfaces.ITeamService teamService
+
+<PageTitle>TDI - User Manager</PageTitle>
+
+@*<h3>Users Manager</h3>*@
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Admin</a></li>
+                <li class="breadcrumb-item active">Users</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+            @*@if (DataSource != null && DataSource.Count() > 0)
+            {
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+
+            }*@
+            @*kiểm tra button có insert không*@
+            @*@if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+            {
+
+            }*@
+
+           @* <DxButton class="btn add-btn  mr-4" Click="() => OnAddOB() " IconCssClass="fa fa-plus" Text="AddOB" RenderStyle="ButtonRenderStyle.None" />*@
+            <DxButton class="btn add-btn  mr-4" Click="() => OnAddNewRow() " IconCssClass="fa fa-plus" Text="New" RenderStyle="ButtonRenderStyle.None" />
+        </div>
+    </div>
+</div>
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+<DxGrid @ref="Grid" style="height: calc(100vh - 21vh)"
+        Data="@DataSource"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        @* <DxGridDataColumn FieldName="UserName" /> *@
+        <DxGridDataColumn FieldName="FullName" MinWidth="150"/>
+        <DxGridDataColumn FieldName="Email" MinWidth="150" />
+        <DxGridDataColumn FieldName="PhoneNumber" />
+        @*<DxGridDataColumn FieldName="BirthDay" DisplayFormat="{0:dd/MM/yyyy}" Width="8%" MinWidth="50" TextAlignment="GridTextAlignment.Center" />*@
+        <DxGridDataColumn FieldName="Status" UnboundType="GridUnboundColumnType.String" Width="5%">
+            <CellDisplayTemplate>
+                @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.Active)
+                {
+                    <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.Active)</span>
+                }
+                else
+                {
+                    <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.InActive)</span>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        @*<DxGridDataColumn FieldName="EmployeeId" />*@
+        <DxGridDataColumn FieldName="RoleName" Caption="Role" />
+        <DxGridDataColumn FieldName="CountryName" />
+        <DxGridDataColumn FieldName="TeamName" />
+        <DxGridDataColumn FieldName="UserType" />
+
+        <DxGridCommandColumn MinWidth="200">
+            <HeaderTemplate>
+                @*<DxButton Click="() => Grid.StartEditNewRowAsync()" Text="New" RenderStyle="ButtonRenderStyle.Info" />*@
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    //<DxButton Click="() => Grid.StartEditDataItemAsync(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                    //<DxButton Click="() => Grid.ShowDataItemDeleteConfirmation(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                    <DxButton Click="() => OnEditRow(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                    //<DxButton Click="() => OnDeleteRow(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+    <EditFormTemplate Context="editFormContext">
+        @{
+            var user = (UserModel)editFormContext.EditModel;
+            
+            bool userNameReadOnly = false;
+            if (editFormContext.DataItem != null)
+            {
+                userNameReadOnly = true;
+            }
+
+            if(user.BirthDay.Year == 1)
+            {
+                user.BirthDay = DateTime.Now;
+            }
+        }
+        <DxFormLayout CssClass="w-800">
+            <DxFormLayoutItem Caption="UserName" ColSpanMd="12">
+                <DxTextBox @bind-Text="@user.UserName" ReadOnly="@userNameReadOnly" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="FullName" ColSpanMd="12">
+                <DxTextBox @bind-Text="@user.FullName" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Password" ColSpanMd="12">
+                <DxTextBox @bind-Text="@user.HashPassword" Password="true" CssClass="PasswordTextBox" />
+                @*<div style="position: relative;">
+                <span class="oi oi-eye myIcon" ></span>
+                <DxTextBox @bind-Text="@user.UserPassword" Password="true" CssClass="PasswordTextBox" />
+                </div>*@
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Email" ColSpanMd="12">
+                <DxTextBox @bind-Text="@user.Email" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="PhoneNumber" ColSpanMd="12">
+                <DxTextBox @bind-Text="@user.PhoneNumber" />
+            </DxFormLayoutItem>
+            @*<DxFormLayoutItem Caption="BirthDay" ColSpanMd="6">
+                <DxDateEdit @bind-Date="@user.BirthDay" PickerDisplayMode="DatePickerDisplayMode.Calendar" />
+            </DxFormLayoutItem>*@
+            @*<DxFormLayoutItem Caption="Status" ColSpanMd="6">
+                <DxCheckBox @bind-Checked="@user.Active">@GetTextActive(user.Active)</DxCheckBox>
+            </DxFormLayoutItem>*@
+
+            <DxFormLayoutItem Caption="Status" ColSpanMd="12">
+                @if (firstDefaultActive && user.Id.ToString() == "00000000-0000-0000-0000-000000000000")
+                {
+                    firstDefaultActive = false;
+                    user.Active = true;
+                   @* ValueShift = true;*@
+                    <DxCheckBox @oninput="CheckboxChanged" @bind-Checked="@user.Active">@GetText()</DxCheckBox>
+                }
+                else
+                {
+                  
+                    <DxCheckBox @oninput="CheckboxChanged" @bind-Checked="@user.Active">@GetText()</DxCheckBox>
+
+                }
+            </DxFormLayoutItem>
+
+            @*<DxFormLayoutItem Caption="EmployeeId" ColSpanMd="6">
+                <DxTextBox @bind-Text="@user.EmployeeId" />
+            </DxFormLayoutItem>*@
+            <DxFormLayoutItem Caption="Team" ColSpanMd="12">
+                <DxComboBox Data="@TeamDataSource"
+                            TextFieldName="@nameof(TeamModel.Name)"
+                            ValueFieldName="@nameof(TeamModel.Id)"
+                            CssClass="cw-480"
+                            @bind-Value="@user.TeamId"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="UserType" ColSpanMd="12">
+                <DxComboBox Data="@UserTypeSource"
+                            CssClass="cw-480"
+                            @bind-Value="@user.UserType"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Role" ColSpanMd="12">
+                <DxComboBox Data="@RoleDataSource"
+                            TextFieldName="@nameof(RolesModel.Name)"
+                            ValueFieldName="@nameof(RolesModel.Id)"
+                            CssClass="cw-480"
+                            @bind-Value="@user.RoleId"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Country" ColSpanMd="12">
+                <DxComboBox Data="@CountryDataSource"
+                            TextFieldName="@nameof(CountryModel.Name)"
+                            ValueFieldName="@nameof(CountryModel.Id)"
+                            CssClass="cw-480"
+                            @bind-Value="@user.CountryId"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="LeaveCountry" ColSpanMd="12">
+                <DxComboBox Data="@LeaveCountryDataSource"
+                            TextFieldName="@nameof(CountryModel.Name)"
+                            ValueFieldName="@nameof(CountryModel.Id)"
+                            CssClass="cw-480"
+                            @bind-Value="@user.LeaveCountry"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+           
+
+            <DxFormLayoutItem ColSpanMd="12">
+                <ValidationSummary />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+    bool firstDefaultActive { get; set; } = true;
+    bool ValueShift { get; set; } = true;
+
+    string GetText()
+    {
+        if (ValueShift) return "Active";
+        else return "InActive";
+    }
+
+    private void CheckboxChanged(ChangeEventArgs e)
+    {
+        ValueShift = (bool)e.Value;
+
+
+    }
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<UserModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+    string Title = "User";
+
+    IEnumerable<RolesModel> RoleDataSource { get; set; }
+    IEnumerable<CountryModel> CountryDataSource { get; set; }
+    IEnumerable<CountryModel> LeaveCountryDataSource { get; set; }
+    IEnumerable<TeamModel> TeamDataSource { get; set; }
+
+    IEnumerable<string> UserTypeSource = new List<string>() { "Fulltime", "Parttime", "Freelancer","Contractor" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            User = authState?.User;
+
+
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetUsersDataAsync();
+                await GetRoleDataAsync();
+                await GetCountryDataAsync();
+                await GetTeamDataAsync();
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+    }
+
+    private async Task GetUsersDataAsync()
+    {
+        DataSource = new List<UserModel>();
+        var result = await userService.GetAllUser(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<UserModel> users)
+            {
+                DataSource = users.Where(x=>x.Status == "A");
+            }
+        }
+    }
+
+    private async Task GetRoleDataAsync()
+    {
+        RoleDataSource = new List<RolesModel>();
+        var result = await roleService.GetAll();
+        if (result.Success)
+        {
+            if (result.Data is List<RolesModel> roles)
+            {
+                RoleDataSource = roles;
+            }
+        }
+    }
+
+    private async Task GetCountryDataAsync()
+    {
+        CountryDataSource = new List<CountryModel>();
+        LeaveCountryDataSource = new List<CountryModel>();
+        var result = await countryService.GetCountryActive(-1);
+        if (result.Success)
+        {
+            if (result.Data is List<CountryModel> countries)
+            {
+                CountryDataSource = countries;
+                LeaveCountryDataSource = countries;
+            }
+        }
+    }
+
+    private async Task GetTeamDataAsync()
+    {
+        TeamDataSource = new List<TeamModel>();
+        var result = await teamService.GetAllTeam(0, TDI.Utilities.Constants.TSStatus.Active);
+        if (result.Success)
+        {
+            if (result.Data is List<TeamModel> teams)
+            {
+                TeamDataSource = teams;
+            }
+        }
+    }
+
+    private async Task OnEditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var user = (UserModel)e.EditModel;
+        if (string.IsNullOrEmpty(user.LeaveCountry.ToString()))
+        {
+            user.LeaveCountry = user.CountryId;
+        }
+        if (e.IsNew)
+        {
+            var res = userService.InsertUser(User.Identity.Name, user);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        else
+        {
+            var res = userService.UpdateUser(User.Identity.Name, (UserModel)e.DataItem, user);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        await GetUsersDataAsync();
+    }
+
+    private async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        //var res = leaveTypeService.DeleteLeaveType((LeaveTypeModel)e.DataItem);
+        //if (res.Success)
+        //{
+        //    await Swal.FireAsync("Delete Data", res.Message, SweetAlertIcon.Success);
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync("Delete Data", res.Message, SweetAlertIcon.Error);
+        //}
+        await GetUsersDataAsync();
+    }
+
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private string GetTextActive(bool value)
+    {
+        if (value) return nameof(TDI.Utilities.Constants.TSStatus.Active);
+        else return nameof(TDI.Utilities.Constants.TSStatus.InActive);
+
+    }
+
+    public void OnAddNewRow()
+    {
+        firstDefaultActive = true;
+        ValueShift = true;
+        Title = "Add New User"; Grid.StartEditNewRowAsync();
+    }
+    public void OnEditRow(object DataItem)
+    {
+        Title = "Edit User"; Grid.StartEditDataItemAsync(DataItem);
+    }
+    public void OnDeleteRow(object DataItem)
+    {
+        Title = "Delete User"; Grid.ShowDataItemDeleteConfirmation(DataItem);
+    }
+
+    #region "OB - User:"
+    public void OnAddOB()
+    {
+        ZZZ_GetUsersDataAsync();
+        foreach(var item in DataSource2)
+        {
+
+            var userMap = item as UserModel;
+            userMap.BirthDay = DateTime.Now;
+            userMap.HashPassword = userMap.UserPassword;
+
+            var res = userService.InsertUser(userMap.UserName, userMap);
+            if (res.Success)
+            { 
+            }
+            else
+            { 
+            }
+        }
+
+    }
+
+    private List<UserModel> DataSource2;
+    private async Task ZZZ_GetUsersDataAsync()
+    {
+        DataSource2 = new List<UserModel>();
+        var result = await userService.ZZZ_GetAllUser_List(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<UserModel> users)
+            {
+                DataSource2 = users;
+            }
+        }
+    }
+
+    #endregion
+}
+

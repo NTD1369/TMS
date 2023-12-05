@@ -1,0 +1,52 @@
+﻿@page "/ApprovalTimeEntry_RejectRemarks" 
+
+<EditForm Model="RemarksModel" OnValidSubmit="RejectYes">
+     
+    
+    <div class="mb-3">
+        <label for="Name">Reject Remarks:</label>
+        <div>
+            <InputText class="form-control" @bind-Value="Remarks"></InputText>
+        </div>
+
+    </div>
+      
+      
+    <div style="text-align:right;margin-top:10px">
+        <button class="btn btn-success">Reject</button>
+        <button class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+    </div>
+</EditForm>
+@code {
+
+
+    [Parameter] public string Remarks { get; set; } = "";
+
+    protected string RemarksModel = "";
+
+    private string Username { get; set; }
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+    protected async Task RejectYes()
+    {
+
+        await BlazoredModal.CloseAsync(ModalResult.Ok(Remarks));
+
+    }
+
+
+    private async void CancelAdd()
+    {
+        Remarks = "......";
+        //URLHelper.NavigateTo("/ContractLine");
+        await BlazoredModal.CancelAsync(ModalResult.Cancel(Remarks));
+    }
+}

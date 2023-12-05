@@ -1,0 +1,478 @@
+﻿@page "/timeEntryAdd"
+@using System.ComponentModel.DataAnnotations;
+@inject ProjectController projectService
+@inject TimeEntryController timeEntryService
+
+@inject ContractHeaderController contractService
+@inject ContractLineController wbsService
+@inject ContractLineController contractLineService
+@inject TDI.Application.Interfaces.IUserService userService
+
+
+<PageTitle>TimeEntryAdds</PageTitle>
+
+<EditForm Model="timeEntry">
+    <div class="mb-3">
+        <label for="Date">Date:</label>
+        <div class="">
+            <div>
+                <DxDateEdit CustomDisabledDate="@OnCustomDisabledDate" Date="timeAdd" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateExpression="@(() => timeAdd)" DateChanged="@((DateTime newValue) => OnDateChanged(newValue))" CssClass="cw-320" />
+                @*<input class="form-control floating datetimepicker" type="date" @bind-value="timeEntry.Date">*@
+
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="ContractCode">Project - Contract:</label>
+        <div class="">
+            @if (contractHeader != null && contractHeader.Count > 0)
+            {
+                <DxComboBox Data="@contractHeader" Id="cbb_ContractCode" style="font-size:large"
+                            ListRenderMode="ListRenderMode.Virtual"
+                            FilteringMode="DataGridFilteringMode.Contains"
+                            TextFieldName="@nameof(ctrModel.ContractName)"
+                @bind-Text="contractAssignL.ContractName"
+                            Value="@currentContractHeader"
+                            ValueChanged="@((ctrModel ctr) => SelectedProjectChanged(ctr))"
+                            CssClass="cw-480" />
+            }
+
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="PrjCode">WBS:</label>
+        <div class="">
+            <DxComboBox Data="@wbsL" Id="cbb_ContractLineId" style="font-size:large"
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="LineCode"
+                        Value="@selectedWBS"
+                        ValueChanged="@((ContractLineModel contractLine) => SelectedWBSChanged(contractLine))"
+            @bind-Text="contractAssignL.LineCode"
+                        CssClass="cw-480" />
+        </div>
+    </div>
+
+
+    <div class="mb-3">
+        <label for="Hour">Hour :</label>
+        <div class="">
+            <InputNumber class="form-control" @bind-Value="timeEntry.Hour"></InputNumber>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="Comments">Comments :</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="timeEntry.Comments"></InputText>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-5">
+            @*<button type="button" @onclick="(async ()=> await sendEmail())" class="btn btn-info">Send email</button>*@
+        </div>
+        <div class="col-md-7" style="text-align:right">
+            <button type="submit" class="btn btn-success" @onclick="AddTimeEntry">Save</button>
+            <button type="button" class="btn btn-danger" @onclick="CancelAdd">Close</button>
+        </div>
+
+    </div>
+
+</EditForm>
+
+
+@code {
+    DateTime Date = DateTime.Today;
+    //ProjectModel Value { get; set; }
+    private List<ProjectModel> prjs = new List<ProjectModel>();
+
+    //public List<WBSHeaderModel> wbsList = new List<WBSHeaderModel>();
+
+    protected TimeEntryModel timeEntry = new();
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private string Username { get; set; }
+    private string Usertype { get; set; }
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    public List<DateHeaderModel> viewTimeEntryModelHeader = new List<DateHeaderModel>();
+    public List<ViewTimeEntryModel> RowViewTimeEntryModel = new List<ViewTimeEntryModel>();
+
+    [Parameter] public DateTime overrideStart { get; set; } = DateTime.Today;
+    [Parameter] public DateTime timeAdd { get; set; }
+
+    [Parameter] public string projectCode { get; set; }
+    IEnumerable<UserModel> UserDataSource { get; set; }
+
+    //public async Task sendEmail()
+    //{
+    //    await commonService.WBSSendmailList(wbsList);
+    //}
+
+
+    void OnCustomDisabledDate(CalendarCustomDisabledDateEventArgs args)
+    {
+        //args.IsDisabled = args.Date.DayOfWeek == DayOfWeek.Sunday || args.Date.DayOfWeek == DayOfWeek.Saturday;
+    }
+    [Parameter] public string Message { get; set; } = "";
+    DateTime myTime;
+    void OnDateChanged(DateTime newValue)
+    {
+        timeEntry.Date = newValue;
+        //overrideStart = newValue;
+        timeAdd = newValue;
+
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        //DateTime overrideStart = DateTime.Today;
+        GetUsersDataAsync();
+        LoadProject();
+        timeEntry.PrjCode = projectCode;
+        var authState = await authenticationState;
+        Username = authState.User.Identity.Name;
+
+
+
+        LoadContractCode();
+        contractAssignL.ContractName = "";
+        //LoadDataContractLine();
+    }
+
+    public string userTypeInUser { get; set; }
+
+    private async Task GetUsersDataAsync()
+    {
+        UserDataSource = new List<UserModel>();
+        var result = await userService.GetAllUser(string.Empty);
+        if (result.Success)
+        {
+            var dataResul = (List<UserModel>)result.Data;
+            userTypeInUser = dataResul.Where(x => x.UserName == Username).Select(i => i.UserType).FirstOrDefault();
+            // if (result.Data is List<UserModel> users)
+            // {
+            //     UserDataSource = users;
+
+            //     // @foreach (var item in UserDataSource)
+            //     // {
+            //     //     userTypeInUser = item.UserType;
+            //     // }
+
+            // }
+        }
+    }
+
+
+    public async void LoadProject()
+    {
+        var dataPrj = projectService.GetProject();
+
+        if (dataPrj.Result.Success == true)
+        {
+            prjs = dataPrj.Result.Data as List<ProjectModel>;
+            var prj = prjs.Where(x => x.PrjCode == projectCode);
+            if (prj.Any())
+            {
+                timeEntry.PrjName = prj.FirstOrDefault().PrjName;
+
+            }
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data Project",
+             dataPrj.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    protected async Task AddTimeEntry()
+    {
+        //if (timeEntry.Comments == "" || string.IsNullOrEmpty(timeEntry.Comments))
+        //{
+        //    await Swal.FireAsync("Error",              "Please input Comments.",              SweetAlertIcon.Error              );
+
+        //    return;
+        //}
+        if (timeEntry.Hour > 20 || timeEntry.Hour <= 0)
+        {
+            await Swal.FireAsync(
+              "Error",
+              "Hour summary of time entry in day can not greater than 8 hours",
+              SweetAlertIcon.Error
+              );
+            return;
+        }
+
+        var authState = await authenticationState;
+
+        timeEntry.UserCode = authState.User.Identity.Name;
+        timeEntry.UserType = userTypeInUser;
+        timeEntry.PrjCode = currentContractHeader.ProjectCode;// timeSplt[0];
+        timeEntry.PrjCode = currentContractHeader.ContractCode;// ;
+        timeEntry.PrjName = currentContractHeader.ContractName; //
+
+        timeEntry.ContractLineId = contractAssignL.ContractLineId;
+
+        timeEntry.Date = timeAdd.Date;          // gan lai neu ho ko chon lai ngay
+
+        var prj = prjs.Where(x => x.PrjCode == currentContractHeader.ProjectCode);
+
+        string[] timeSplt = prj.FirstOrDefault().PrjCode.Split(';');  //  timeEntry.PrjCode.Split(';');
+        timeEntry.SAPB1DB = timeSplt[1];
+
+
+
+
+
+
+        var resultAdd = await timeEntryService.Create(timeEntry);
+        if (timeEntry.Hour >= 9 && timeEntry.UserType == "Fulltime")
+        {
+            await Swal.FireAsync(
+              "",
+              resultAdd.Message,
+              SweetAlertIcon.Error
+              );
+        }
+        else
+        {
+            if (resultAdd.Success == true)
+            {
+                SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create TimeEntry",
+                        Text = $"Create TimeEntry Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+                if (!string.IsNullOrEmpty(result.Value))
+                {
+                    //URLHelper.NavigateTo("/timeEntry");
+                    BlazoredModal.CancelAsync();
+
+                }
+                //int hour = (resultAdd.Data as TimeEntryModel).Hour;
+
+            }
+            else
+            {
+                SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create TimeEntry",
+                        Text = resultAdd.Message.ToString() + $" - Do you want email to PM?",
+                        Icon = SweetAlertIcon.Warning,
+                        ShowCancelButton = true,
+                        ConfirmButtonText = $"Yes",
+                        CancelButtonText = $"No"
+                    });
+                if (!string.IsNullOrEmpty(result.Value))
+                {
+                    ///send email
+                    sendEmail();
+
+                }
+
+                //await Swal.FireAsync(
+                //  "Create TimeEntry",
+                //  resultAdd.Message,
+                //  SweetAlertIcon.Error
+                //  );
+            }
+        }
+
+    }
+
+
+    private void CancelAdd()
+    {
+        BlazoredModal.CancelAsync();
+
+        //URLHelper.NavigateTo("/timeEntry");
+
+    }
+
+    #region : "Xu ly Choose Contract Header"
+
+    //contractCode
+    private List<ctrModel> contractHeader = new List<ctrModel>();
+    private List<ContractLineModel> wbsL = new List<ContractLineModel>();
+    private ctrModel currentContractHeader = new ctrModel();
+    protected ContractAssignMemberModel contractAssignL = new()
+        {
+            StartDate = DateTime.Now,
+            EndDate = DateTime.Now
+        };
+
+    public async void LoadContractCode()
+    {
+        DateTime fromDate = new DateTime(1900, 01, 01);
+        DateTime toDate = new DateTime(2023, 01, 01);
+        var dataPrj = contractService.GetContractLineContractCode_byUserWBS(Username, fromDate, toDate);
+
+        if (dataPrj.Result.Success == true)
+        {
+            contractHeader = dataPrj.Result.Data as List<ctrModel>;
+            //currentContractHeader = contractHeader.FirstOrDefault();
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data COntract",
+             dataPrj.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+    void SelectedProjectChanged(ctrModel contractHeader)
+    {
+        currentContractHeader = contractHeader;
+        contractAssignL.ContractCode = contractHeader.ContractCode;
+        contractAssignL.ContractLineId = "";
+        selectedWBS = new ContractLineModel();
+        LoadContractLineByContractHeader(contractHeader.ContractCode);
+
+    }
+
+    public ContractLineModel selectedWBS = new ContractLineModel();
+
+
+    void SelectedWBSChanged(ContractLineModel contractLine)
+    {
+        selectedWBS = contractLine;
+        contractAssignL.ContractLineId = contractLine.ContractLineId;
+    }
+    public async Task sendEmail()
+    {
+        //contractAssignL.ContractLineId;
+        //selectedWBS = wbsL.Where(x => x.ContractLineId == contractAssignL.ContractLineId).FirstOrDefault();
+        if (selectedWBS != null && string.IsNullOrEmpty(selectedWBS.LineCode) == false)
+        {
+            string emailPM = selectedWBS.EmailPM;
+
+            if (string.IsNullOrEmpty(emailPM) == false) // tương ứng if(emailPM == "" || emailPM == null)
+            {
+                selectedWBS.UserName = Username;
+                var sendMailResult = await commonService.WBSSendmail(selectedWBS, emailPM);
+                if (sendMailResult.Success == false)
+                {
+                    await Swal.FireAsync(
+                    "Send Email Request",
+                    sendMailResult.Message,
+                    SweetAlertIcon.Error
+                    );
+                }
+                else
+                {
+                    await Swal.FireAsync(
+                   "Send Email Request",
+                   "Successfully",
+                   SweetAlertIcon.Success
+                   );
+                }
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                 "Send Email Request",
+                 "Email PM Is Null. Can't Send",
+                 SweetAlertIcon.Warning
+                 );
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+                "Send Email Request",
+                "Select WBS please",
+                SweetAlertIcon.Info
+                );
+        }
+
+    }
+
+    public async void LoadContractLineByContractHeader(string contractCode)
+    {
+        var authState = await authenticationState;
+        DateTime fromDate = new DateTime(1900, 01, 01);
+        DateTime toDate = new DateTime(2023, 01, 01);
+        var dataContract = wbsService.GetContractLine(Username, fromDate, toDate, contractCode);
+        if (dataContract.Result.Success == true)
+        {
+            wbsL = dataContract.Result.Data as List<ContractLineModel>; //ContractHeader
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data WBS",
+             dataContract.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+    #endregion
+
+    //xy ly khi add nhieu ngay:
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    public DateHeaderModel TraVeNgayTuNgayTrongTuan(string ngaytrongtuan)
+    {
+
+        DateHeaderModel result = viewTimeEntryModelHeader.Where(x => x.CustomF1.StartsWith(ngaytrongtuan)).FirstOrDefault();
+        return result;
+    }
+
+    public async Task showTimeEntryAdd(string projectCode, DateTime timeAdd)
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(TimeEntryAdd.timeAdd), DateTime.Now).Add(nameof(TimeEntryAdd.projectCode), projectCode);
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Automatic
+            };
+
+        var resul = Modal.Show<TimeEntryAdd>("Add Time Entry", parameters, options);
+        //resul.Result
+    }
+
+    public async void ShowDetailAdd(string projectCode, string ngayTrongTuan)
+    {
+        var NgayGet = TraVeNgayTuNgayTrongTuan(ngayTrongTuan);
+        if (NgayGet != null)
+        {
+            showTimeEntryAdd(projectCode, NgayGet.Date);
+        }
+        else
+        {
+            showTimeEntryAdd(projectCode, DateTime.Now);
+        }
+    }
+
+    public async void ShowDetail(string projectCode, DateTime? ngay, string ngaytrongtuan)
+    {
+
+    }
+
+    public class DateHeaderModel
+    {
+        public DateTime Date { get; set; }
+        public string DayOfWeek { get; set; }
+        // Mình thích thêm giá trị gì để lưu thì mình gắn vào những custom field
+        public string CustomF1 { get; set; }
+        public string CustomF2 { get; set; }
+        public string CustomF3 { get; set; }
+        public string CustomF4 { get; set; }
+        public string CustomF5 { get; set; }
+
+    }
+
+}

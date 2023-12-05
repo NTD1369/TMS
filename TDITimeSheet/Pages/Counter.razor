@@ -1,0 +1,76 @@
+﻿@page "/pos-atom/notification"
+@inject CommonController commonService
+@using System.Text;
+ @* 
+@attribute [Authorize(Roles = "Administrator,User")]
+ *@
+<PageTitle>Counter</PageTitle>
+
+<h1>@Message</h1>
+@if(@Country!=null)
+{
+    <h1>@Country.Name</h1>
+}
+
+
+<p role="status">Current count: @currentCount</p>
+
+<button class="btn btn-primary" @onclick="CommitData">Click me</button>
+
+@code {
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+    [Parameter] public string Message { get; set; } = "";
+
+    [Parameter] public CountryModel Country { get; set; }
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        string a = "";
+    }
+    public   async Task CommitData()
+    {
+        var postBody = new
+        {
+            direct = 1,
+            requestID = Guid.NewGuid().ToString(), // unique...SQL,// "00017-058-0001",
+            orderId = "1234:5263763487", //mã bill bán hàng
+            requestType = "SALE",
+            ipnUrl = "http://localhost:5058/pos-atom/notification", //URL để trả về kết quả // "https://kafka.thebeanfamily.org/posatom/notification",
+            amount = 10000,
+            tip = 0,
+            //"extraData": [
+            //{ "key1": "value1"},
+            //{ "key2": "value2"}
+            //]
+        };
+        var response = await commonService.PostAsync("http://192.168.100.21:8080/?verify_code=810698", postBody);
+        var errorContent = await response.Content.ReadAsStringAsync();
+        var resultMessage = $"Error: {response.StatusCode.ToString()}. {errorContent}";
+        string a = "";
+
+        // // create request object
+        // HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://reqres.in/api/articles");
+
+        // // set request body
+        // var postBody = new { Title = "Blazor POST Request Example" };
+        // request.Content = new StringContent(JsonSerializer.Serialize(postBody), Encoding.UTF8, "application/json");
+
+        // // add authorization header
+        // // request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "my-token");
+
+        // // add custom http header
+        // // request.Headers.Add("My-Custom-Header", "foobar");
+
+        // // send request
+        //  var response = await HttpClient.SendAsync(request);
+
+        // // convert response data to Article object
+        // var result = await response.Content.ReadFromJsonAsync<String>();
+    }
+}

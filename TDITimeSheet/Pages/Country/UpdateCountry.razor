@@ -1,0 +1,91 @@
+﻿@page "/updateCountry/{CountryId:int}"
+@inject CountryController countryService
+
+
+
+
+<h3>Update Country</h3>
+<EditForm Model="country" OnValidSubmit="SaveCountry">
+    @*<DataAnnotationsValidator/>*@
+    <div class="mb-3">
+        <label for="Name">Name</label>
+        <div class="col-md-4">
+            <InputText class="form-control" @bind-Value="country.Name"></InputText>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="Name">Sapb1db</label>
+        <div class="col-md-4">
+            <InputText class="form-control" @bind-Value="country.Sapb1db"></InputText>
+        </div>
+
+    </div>
+    <div class="mb-3">
+        <label for="Name">HREmail</label>
+        <div class="col-md-4">
+            <InputText class="form-control" @bind-Value="country.HREmail"></InputText>
+        </div>
+
+    </div>
+    <div>
+        <button>Save</button>
+        @*<button @onclick="CancelUpdate">Cancel</button>*@
+
+    </div>
+</EditForm>
+
+
+@code {
+
+    protected CountryModel country = new();
+    [Parameter] public int CountryId { get; set; } 
+
+    List<CountryModel> countries = new List<CountryModel>();
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await countryService.GetById(CountryId);
+        if (result.Success == true)
+        {
+            country = result.Data as CountryModel;
+        }
+
+
+        //countries = result.Data as List<CountryModel>;
+
+
+    }
+
+
+    private void CancelUpdate()
+    {
+        URLHelper.NavigateTo("/country");
+
+    }
+
+
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    protected async Task SaveCountry()
+    {
+        //var resultUpdate = await countryService.Update(country);
+        //if (resultUpdate.Success == true)
+        //{
+        //    URLHelper.NavigateTo("/country");
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Update Country",
+        //      resultUpdate.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+        await BlazoredModal.CloseAsync(ModalResult.Ok(country));
+
+    }
+
+
+
+}

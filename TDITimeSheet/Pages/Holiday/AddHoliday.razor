@@ -1,0 +1,199 @@
+﻿@page "/addHoliday"
+@inject HolidayController holidayService
+@inject TDI.Application.Interfaces.ICountryService countryService
+@inject TDI.Application.Interfaces.ILeaveTypeService leaveTypeService
+
+
+
+
+@*<h3>AddNewCountry</h3>*@
+<EditForm Model="holiday" OnValidSubmit="SaveHoliday">
+
+    <div class="mb-3">
+        <label for="Name">Title</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="holiday.Title"></InputText>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                @*cal-icon*@
+                <div class="">
+                    <label for="Name">From Date</label>
+                    <div class="">
+                        <DxDateEdit @bind-Date="@holiday.HolidayDateFr" PickerDisplayMode="DatePickerDisplayMode.Calendar" CssClass="cw-320" style="font-size:large" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                @*cal-icon*@
+                <div class="">
+                    <label for="Name">To Date</label>
+                    <div class="">
+                        <DxDateEdit @bind-Date="@holiday.HolidayDateTo" PickerDisplayMode="DatePickerDisplayMode.Calendar" CssClass="cw-320" style="font-size:large" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mb-3" style="margin-top:15px">
+        <label for="Name">Country Name</label>
+        <div class="">
+            <DxComboBox Data="@CountryDataSource"
+                        TextFieldName="@nameof(CountryModel.Name)"
+                        ValueFieldName="@nameof(CountryModel.Id)"
+                        CssClass="cw-480"
+                        @bind-Text="holiday.CountryName"
+                        @bind-Value="@holiday.CountryId"
+                        FilteringMode="DataGridFilteringMode.Contains" />
+        </div>
+    </div>
+   @* <div class="mb-3" style="margin-top:15px">
+        <label for="Name">ProjectCode</label>
+        <div class="">
+                <DxComboBox Data="@ProjectCodeSource"
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(ContractModel.ContractName)"
+                        ValueFieldName="@nameof(ContractModel.ProjectCode)"
+                        @bind-Text="@holiday.ContractName"
+                        @bind-Value="@holiday.ProjectCode"
+                        CssClass="cw-480" />
+        </div>
+    </div>*@
+   
+    <div class="mb-3" style="margin-top:15px">
+        <label for="Name">ProjectCode</label>
+        <div class="">
+            <DxComboBox Data="@ProjectCodeSource"
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(ContractModel.ContractName)"
+                        @bind-Text="holiday.ContractName"
+                        Value="@currentContract"
+                        ValueChanged="@((ContractModel ctr1) => SelectedHolidayChanged(ctr1))"
+                        CssClass="cw-480" />
+           
+        </div>
+    </div>
+    <div class="mb-3" style="margin-top:15px">
+        <label for="Name">WBSCode</label>
+        <DxComboBox Data="@ContractSource" Id="cbb_ContractSource"
+                    ListRenderMode="ListRenderMode.Virtual"
+                    FilteringMode="DataGridFilteringMode.Contains"
+                    TextFieldName="@nameof(ContractModel.WBSCode)"
+                    ValueFieldName="@nameof(ContractModel.WBSCode)"
+                    @bind-Value="holiday.WBSCode"
+                    @bind-Text="holiday.WBSCode"
+                    CssClass="cw-480" />
+    </div>
+
+    <div style="text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+
+    </div>
+</EditForm>
+
+
+@code {
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+    IEnumerable<CountryModel> CountryDataSource { get; set; }
+    IEnumerable<ContractModel> ContractSource { get; set; }
+    IEnumerable<ContractModel> ProjectCodeSource { get; set; }
+    public ContractModel currentContract = new ContractModel();
+
+    protected HolidayModel holiday = new();
+    [Parameter] public string Message { get; set; } = "";
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCountryDataAsync();
+        await GetContractDataAsync();
+        SelectedHolidayChanged(currentContract);
+
+    }
+    protected async Task SaveHoliday()
+    {
+
+        await BlazoredModal.CloseAsync(ModalResult.Ok(holiday));
+
+    }
+    private async Task GetCountryDataAsync()
+    {
+        CountryDataSource = new List<CountryModel>();
+        var result = await countryService.GetCountryActive(-1);
+        if (result.Success)
+        {
+            if (result.Data is List<CountryModel> countries)
+            {
+                CountryDataSource = countries;
+            }
+        }
+    }
+
+    private async void CancelAdd()
+    {
+        await BlazoredModal.CancelAsync();
+
+
+    }
+    private async Task GetContractDataAsync()
+    {
+
+        ProjectCodeSource = new List<ContractModel>();
+        var result = await leaveTypeService.GetContractData(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<ContractModel> contracts)
+            {
+                ProjectCodeSource = contracts.DistinctBy(x => new { x.ContractCode, x.ContractName }).ToList();
+                //currentContract = ProjectCodeSource.FirstOrDefault();
+
+            }
+        }
+        //var result = await leaveTypeService.GetContractData(string.Empty);
+        //if (result.Success == true)
+        //{
+        //    ProjectCodeSource = result.Data as List<ContractModel>;
+
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Load Data Contract",
+        //      result.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+    }
+
+    private async Task GetWbs(string contractCode)
+    {
+        var result = await leaveTypeService.GetContractData(contractCode);
+        if (result.Success == true)
+        {
+            ContractSource = result.Data as List<ContractModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Contract",
+              result.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    void SelectedHolidayChanged(ContractModel contract)
+    {
+        currentContract = contract;
+        holiday.ProjectCode = contract.ContractCode;
+        //holiday.ContractCode = "";
+        GetWbs(contract.ProjectCode);
+    }
+}

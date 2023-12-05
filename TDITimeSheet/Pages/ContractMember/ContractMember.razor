@@ -1,0 +1,216 @@
+﻿@page "/contractMember"
+@inject ContractMemberController contractMemberService
+@inject ContractAssignMemberController contractAssignService
+
+<h3>Member Set Up</h3>
+
+<button class="btn btn-success" @onclick="@(()=>showContractAdd())">Add</button>
+
+<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+           
+            <th>Code</th>
+            <th>EmployeeId</th>
+            <th>Position</th>
+            <th>StartDate</th>
+            <th>EndDate</th>
+           @* <th>CreatedBy</th>
+            <th>CreatedOn</th>
+            <th>ModifiedBy</th>
+            <th>ModifiedOn</th>*@
+            <th>Status</th>
+
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in contractMembers)
+        {
+            <tr>
+               
+                <td>@item.ContractCode</td>
+                <td>@item.EmployeeId</td>
+                <td>@item.Position</td>
+                <td>@item.StartDate.ToString("MM-dd-yyyy")</td>
+                <td>@item.EndDate.ToString("MM-dd-yyyy")</td>
+               @* <td>@item.CreatedBy</td>
+                <td>@item.CreatedOn</td>
+                <td>@item.ModifiedBy</td>
+                <td>@item.ModifiedOn</td>*@
+                <td>@item.Status</td>
+                <td><button type="button" @onclick="(async ()=> await showContractEdit(item.ContractCode,item.ContractMemberID))" class="btn btn-info">Edit</button></td>
+                <td><button type="button" @onclick="(async () => await DelectContractMemberId(item.ContractCode,item.ContractMemberID))" class="btn btn-danger">Delete</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    private List<ContractMemberModel> contractMembers = new List<ContractMemberModel>();
+    //public string contractCode { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private string Username { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState;
+        Username = authState.User.Identity.Name;
+
+        await LoadData();
+
+    }
+    private async Task LoadData()
+    {
+        DateTime fromDate = new DateTime(1900, 01, 01);
+        DateTime toDate = new DateTime(2023, 01, 01);
+
+        var itemContractMember = await contractMemberService.GetContractMember(Username, fromDate, toDate);
+        if (itemContractMember.Success == true)
+        {
+            contractMembers = itemContractMember.Data as List<ContractMemberModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Assign Member",
+              itemContractMember.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    public async Task showContractAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(AddContractMember.Message), "");
+        var messageForm = Modal.Show<AddContractMember>("Add Assign Member", parameters);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var contractAssignL = result.Data as ContractMemberModel;
+            var resultAdd = await contractMemberService.Create(contractAssignL);
+            if (resultAdd.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create Assign Member",
+                        Text = $"Create Assign Member Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+                if (!string.IsNullOrEmpty(resultaz.Value))
+                {
+                    URLHelper.NavigateTo("/contractMember", true);
+                }
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Assign Member",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    public async Task showContractEdit(string contractCode,int id)
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(UpdateContractMember.contractMemberId), id)
+            .Add(nameof(UpdateContractMember.contractCode), contractCode);
+
+        var messageForm = Modal.Show<UpdateContractMember>("Update Assign Member", parameters);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var contractAssignL = result.Data as ContractMemberModel;
+            var resultUpdate = await contractMemberService.Update(contractAssignL);
+            if (resultUpdate.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Update Assign Member",
+                        Text = $"Update Assign Member Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+                if (!string.IsNullOrEmpty(resultaz.Value))
+                {
+                    URLHelper.NavigateTo("/contractMember", true);
+                }
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update Assign Member",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    protected async Task DelectContractMemberId(string contractCode, int id)
+    {
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of Assign Member {contractCode} Data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await contractMemberService.Delete(contractCode, id);
+            if (resultDelete.Success == true)
+            {
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted Assign Member",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+
+
+}

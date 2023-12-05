@@ -1,0 +1,730 @@
+﻿@page "/leave_employee"
+@using System.Globalization;
+@using System.Security.Claims;
+
+@attribute [Authorize]
+@*@attribute [Authorize(Roles = "Admin, Superuser")]*@
+
+@*@inject LeaveController leaveController*@
+@inject TDI.Application.Interfaces.ILeaveService leaveService
+@inject TDI.Application.Interfaces.ILeaveTypeService leaveTypeService
+@inject TDI.Application.Interfaces.IHolidayService holidayService
+@inject CommonController commonService
+
+@*@inject IModalService Modal*@
+
+<PageTitle>TDI - Leave Application</PageTitle>
+<div class="page-header">
+    <div class="row">
+        <div class="col-md-6">
+            @*<h3 class="page-title">Leave Employees</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Leave Application</li>
+            </ul>
+        </div>
+        @* <div class="col-auto ml-auto" style="text-align:right"> *@
+        <div class="col-md-6">
+            @if (DataSource != null && DataSource.Count() > 0)
+            {
+                @*<a @onclick="@(()=> ExportXlsx_Click())" class="btn add-btn mr-4"><i class="fa fa-file-excel-o"></i> Export Excel</a>*@
+                <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+
+            }
+            @*kiểm tra button có insert không*@
+            @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+            {
+                <DxButton class="btn add-btn" Click="() => OnAddNewRow() " IconCssClass="fa fa-plus" Text="New" RenderStyle="ButtonRenderStyle.None" />
+             
+            }
+
+        </div>
+    </div>
+</div>
+@*<h3 class="page-title">Leave Employee</h3>*@
+@*<AuthorizeView>
+    <Authorized>
+        <h1>Name: @context.User.Identity.Name</h1>
+    </Authorized>
+</AuthorizeView>*@
+
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+<DxGrid @ref="Grid" class="table table-striped custom-table mb-0 dataTable no-footer"
+        Data="@DataSource"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditModelSaving="OnEditModelSaving"
+        DataItemDeleting="OnDataItemDeleting"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+
+        @* <DxGridDataColumn FieldName="Username" MinWidth="130" /> *@
+        <DxGridDataColumn FieldName="LeaveType" MinWidth="130" />
+        <DxGridDataColumn FieldName="LeaveFrom" MinWidth="50" TextAlignment="GridTextAlignment.Center" DisplayFormat="{0:dd/MM/yyyy}" />
+        <DxGridDataColumn FieldName="LeaveTo" MinWidth="50" TextAlignment="GridTextAlignment.Center" DisplayFormat="{0:dd/MM/yyyy}" />
+        <DxGridDataColumn FieldName="NumberOfDays" MinWidth="50" TextAlignment="GridTextAlignment.Left" Caption="Day(s)" Enabled="false" />
+        <DxGridDataColumn FieldName="LeaveStatus" MinWidth="50" Caption="Status">
+            <CellDisplayTemplate>
+                @switch ((string)context.Value)
+                {
+                    case TDI.Utilities.Constants.LeaveStatusType.Pending:
+                        <span class="badge bg-inverse-warning">@TDI.Utilities.Constants.LeaveStatusType.Pending</span>
+                        break;
+                    case TDI.Utilities.Constants.LeaveStatusType.Approved:
+                        <span class="badge bg-inverse-success">@TDI.Utilities.Constants.LeaveStatusType.Approved</span>
+                        break;
+                    case TDI.Utilities.Constants.LeaveStatusType.Decline:
+                        <span class="badge bg-inverse-danger">@TDI.Utilities.Constants.LeaveStatusType.Decline</span>
+                        break;
+                    case TDI.Utilities.Constants.LeaveStatusType.Declined:
+                        <span class="badge bg-inverse-danger">@TDI.Utilities.Constants.LeaveStatusType.Declined</span>
+                        break;
+                    default:
+                        <span class="badge bg-inverse-info">@TDI.Utilities.Constants.LeaveStatusType.New</span>
+                        break;
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="Reason" MinWidth="50" />
+        <DxGridDataColumn FieldName="ApprovedBy" MinWidth="50" Caption="Approver" />
+        @*<DxGridDataColumn FieldName="StatusUpdated" Width="10%" MinWidth="50" TextAlignment="GridTextAlignment.Center" Caption="Updated" />*@
+        <DxGridDataColumn FieldName="Remark" MinWidth="200" />
+        @*<DxGridDataColumn FieldName="IsMorning" Width="8%" />*@
+        <DxGridDataColumn FieldName="IsMorning2" MinWidth="50" UnboundType="GridUnboundColumnType.Boolean" Caption="Shift" />
+        @* <CellDisplayTemplate>
+
+        @if ((bool)context.Value == true)
+        {
+
+        <p>Morning</p>
+        }
+        else
+        {
+        <p>Afternoon</p>
+
+        }
+
+
+        </CellDisplayTemplate>*@
+        @*  </DxGridDataColumn>*@
+        @*<DxGridCommandColumn />*@
+        <DxGridCommandColumn MinWidth="200">
+            <HeaderTemplate>
+
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    var leave = (LeaveModel)context.DataItem;
+                    if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.New)
+                    {
+                        @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                        {
+                            <DxButton Click="() => OnEditRow(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                        }
+                        @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                        {
+                            <DxButton Click="() => OnDeleteRow(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                        }
+                    }
+
+                  
+
+
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+    <EditFormTemplate Context="editFormContext">
+        @{
+            var leave = (LeaveModel)editFormContext.EditModel;
+
+            if (leave.LeaveFrom > leave.LeaveTo)
+            {
+                Swal.FireAsync("Warning", "Invalid Leave To", SweetAlertIcon.Warning);
+            }
+
+            if (editFormContext.DataItem == null)
+            {
+                if (leave.LeaveFrom.Year == 1)
+                {
+                    leave.LeaveFrom = DateTime.Today;
+                }
+                if (leave.LeaveTo.Year == 1)
+                {
+                    leave.LeaveTo = DateTime.Today;
+                    leave.AllDay = true;
+                }
+
+                if (leave.LeaveFrom != leave.LeaveTo)
+                {
+                    leave.AllDay = true;
+                }
+                leave.NumberOfDays = (decimal)this.CalculateNumberOfDays(leave);// (decimal)((leave.LeaveTo - leave.LeaveFrom).TotalDays + 1);
+            }
+            else
+            {
+                var leaveOld = (LeaveModel)editFormContext.DataItem;
+                if (leave.LeaveFrom != leaveOld.LeaveFrom || leave.LeaveTo != leaveOld.LeaveTo)
+                {
+                    leave.NumberOfDays = (decimal)this.CalculateNumberOfDays(leave);//(decimal)((leave.LeaveTo - leave.LeaveFrom).TotalDays + 1);
+                }
+            }
+            if (ValueShift == true)
+            {
+                leave.IsMorning = true;
+
+            }
+            else
+            {
+                leave.IsMorning = false;
+
+            }
+            bool isMorningVisible = !leave.AllDay;
+        }
+        <DxFormLayout>
+           
+            <DxFormLayoutItem Caption="Leave Type" ColSpanMd="12">
+                <DxComboBox Data="@LeaveTypeSource"
+                            TextFieldName="@nameof(LeaveTypeModel.Name)"
+                            ValueFieldName="@nameof(LeaveTypeModel.Id)"
+                            CssClass="cw-480"
+                @bind-Value="@leave.LeaveTypeId"
+                            ReadOnly="@(editFormContext.DataItem == null ? false : true)" />
+            </DxFormLayoutItem>
+           
+            <DxFormLayoutItem Caption="Leave From" ColSpanMd="12">
+                <DxDateEdit @bind-Date="@leave.LeaveFrom" PickerDisplayMode="DatePickerDisplayMode.Calendar" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Leave To" ColSpanMd="12">
+                <DxDateEdit @bind-Date="@leave.LeaveTo" PickerDisplayMode="DatePickerDisplayMode.Calendar" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Day(s)" ColSpanMd="12" Enabled="true">
+                <DxSpinEdit @bind-Value="@leave.NumberOfDays" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="All Day" ColSpanMd="12">
+                <DxCheckBox @bind-Checked="@leave.AllDay" />
+            </DxFormLayoutItem>
+            @* <DxFormLayoutItem Caption="IsMorning" ColSpanMd="6" Visible="@isMorningVisible">
+            <DxCheckBox @bind-Checked="@leave.IsMorning" />
+            </DxFormLayoutItem>*@
+
+            <DxFormLayoutItem ColSpanMd="12" Visible="@isMorningVisible">
+                @*@bind-Checked="ValueShift"*@
+                <DxCheckBox @oninput="CheckboxChanged" @bind-Checked="@leave.IsMorning" CheckType="CheckType.Switch">@GetText()</DxCheckBox>
+            </DxFormLayoutItem>
+
+
+
+            <DxFormLayoutItem Caption="Reason" ColSpanMd="12">
+                <DxMemo @bind-Text="@leave.Reason" Rows="2" />
+            </DxFormLayoutItem>
+            @*<DxFormLayoutItem Caption="Remark">
+            <DxTextBox @bind-Text="@leave.Remark" />
+            </DxFormLayoutItem>*@
+            <DxFormLayoutItem ColSpanMd="12">
+                <ValidationSummary />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+    bool ValueShift { get; set; } = true;
+
+    string GetText()
+    {
+        if (ValueShift) return "Morning";
+        else return "Afternoon";
+    }
+
+    private void CheckboxChanged(ChangeEventArgs e)
+    {
+        ValueShift = (bool)e.Value;
+
+
+    }
+
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<LeaveModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+    //bool UsePopupEditForm { get; set; }
+    IEnumerable<LeaveTypeModel> LeaveTypeSource { get; set; }
+    IEnumerable<HolidayModel> HolidaySource { get; set; }
+    string Function = "LEAVEAPPLICATION";
+    string RoleName = "";
+    string Title = "Leave";
+    List<RolePermission> permissionList = new List<RolePermission>();
+    //IEnumerable<LeaveTypeModel> LeaveTypeSource { get; set; }
+
+    string typeTest { get; set; }
+
+    public void OnAddNewRow()
+    {
+        Title = "Add New Leave"; Grid.StartEditNewRowAsync();
+
+        ValueShift = true;
+        typeTest = DataSource.Where(x => x.HREmail != null).Select(i=>i.HREmail).FirstOrDefault();
+      
+
+    }
+    public void OnEditRow(object DataItem)
+    {
+        Title = "Edit Leave"; Grid.StartEditDataItemAsync(DataItem);
+    }
+    public void OnDeleteRow(object DataItem)
+    {
+        Title = "Delete Leave"; Grid.ShowDataItemDeleteConfirmation(DataItem);
+    }
+
+    public void Test()
+    {
+        URLHelper.NavigateTo("/wwwroot/Downloads/Check.txt");
+    }
+    async Task ExportXlsx_Click()
+    {
+        await Grid.ExportToXlsxAsync("Leave Report " + DateTime.Now.ToString("yyyyyMMdd"), new GridXlExportOptions()
+        {
+            //ExportSelectedRowsOnly = ExportSelectedRowsOnly,
+            //CustomizeCell = OnCustomizeCell
+        });
+    }
+    //bắt buộc phải có trong mỗi function
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      "Leave Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+
+            var authState = await authenticationState;
+            User = authState?.User;
+            //lấy roles
+
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0)
+            {
+                var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                RoleName = roleClaim.Value;
+            }
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetLeaveDataAsync();
+                await GetLeaveTypeAsync();
+                await GetHolidayAsync();
+                //lấy quyền
+                await GetFunctionByRole();
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+
+        //return base.OnInitializedAsync();
+    }
+
+    private async Task GetLeaveDataAsync()
+    {
+        DataSource = new List<LeaveModel>();
+        var result = await leaveService.GetAllLeaveByUser(User.Identity.Name);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveModel> leaves)
+            {
+                DataSource = leaves;
+
+            }
+        }
+    }
+    private async Task GetLeaveTypeAsync()
+    {
+        LeaveTypeSource = new List<LeaveTypeModel>();
+        var result = await leaveTypeService.GetLeaveTypeList(User.Identity.Name);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveTypeModel> leaveTypes)
+            {
+
+                LeaveTypeSource = leaveTypes;
+                LeaveTypeSource.FirstOrDefault();
+            }
+        }
+    }
+    //private async Task GetLeaveTypeAsync()
+    //{
+    //    LeaveTypeSource = new List<LeaveTypeModel>();
+    //    var result = await leaveTypeService.GetAllLeaveTypeByUser(User.Identity.Name);
+    //    if (result.Success)
+    //    {
+    //        if (result.Data is List<LeaveTypeModel> leaveTypes)
+    //        {
+    //            LeaveTypeSource = leaveTypes;
+    //        }
+    //    }
+    //}
+
+    private async Task GetHolidayAsync()
+    {
+        HolidaySource = new List<HolidayModel>();
+        var result = await holidayService.GetHolidayByUser(User.Identity.Name);
+        if (result.Success)
+        {
+            if (result.Data is List<HolidayModel> holiday)
+            {
+                HolidaySource = holiday;
+            }
+        }
+    }
+
+    private async Task OnEditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var leave = (LeaveModel)e.EditModel;
+        leave.HREmail = typeTest;
+        if (leave.AllDay)
+        {
+            leave.IsMorning = false;
+        }
+
+        if (string.IsNullOrEmpty(leave.LeaveType))
+        {
+            var leaveTypeModel = LeaveTypeSource.Where(l => l.Id == leave.LeaveTypeId).FirstOrDefault();
+            if (leaveTypeModel != null)
+            {
+                leave.LeaveType = leaveTypeModel.Name;
+            }
+        }
+
+        if (e.IsNew)
+        {
+            //if (leave.LeaveTypeId == 0)
+            //{
+            //    await Swal.FireAsync("Save Data", "Please choose LeaveType!", SweetAlertIcon.Warning);
+            //    e.Cancel = true;
+            //    return;
+            //}
+
+            if (string.IsNullOrEmpty(leave.Username))
+            {
+                leave.Username = User.Identity.Name;
+            }
+            if (string.IsNullOrEmpty(leave.CreatedBy))
+            {
+                leave.CreatedBy = User.Identity.Name;
+            }
+
+            if (string.IsNullOrEmpty(leave.LeaveStatus))
+            {
+                leave.LeaveStatus = TDI.Utilities.Constants.LeaveStatusType.New;
+            }
+
+            if (leave.LeaveFrom.Month != leave.LeaveTo.Month)
+            {
+                var from = leave.LeaveFrom;
+                var to = leave.LeaveTo;
+                while (from <= to)
+                {
+                    DateTime nextDay = new DateTime(from.Year, from.Month, 1).AddMonths(1).AddDays(-1);
+
+                    if (nextDay > to)
+                    {
+                        nextDay = to;
+                    }
+
+                    LeaveModel leaveModel = new LeaveModel()
+                        {
+                            Username = leave.Username,
+                            LeaveTypeId = leave.LeaveTypeId,
+                            LeaveType = leave.LeaveType,
+                            LeaveFrom = from,
+                            LeaveTo = nextDay,
+                            //NumberOfDays = leave.NumberOfDays,
+                            LeaveStatus = leave.LeaveType,
+                            Reason = leave.LeaveType,
+                            AllDay = leave.AllDay,
+                            IsMorning = leave.IsMorning,
+                            Remark = leave.LeaveType,
+                            HREmail = leave.HREmail
+                        };
+
+                    leaveModel.NumberOfDays = (decimal)CalculateNumberOfDays(leaveModel);
+
+                    var res = await leaveService.InsertLeaveAsync(leaveModel);
+                    if (res.Success)
+                    {
+                        await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+                        // commonService.LeaveSendEmail(leaveModel);
+                    }
+                    else
+                    {
+                        await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+                    }
+
+                    from = nextDay.AddDays(1);
+                }
+            }
+            else
+            {
+
+                var res = await leaveService.InsertLeaveAsync(leave);
+                if (leave.LeaveType == null && leave.LeaveTypeId == 0)
+                {
+                    Swal.FireAsync("Warning: Leave type to invalid", "", SweetAlertIcon.Warning);
+
+                }
+                else
+                {
+                    if (res.Success)
+                    {
+                        await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+
+                        // commonService.LeaveSendEmail(leave);
+                    }
+                    else
+                    {
+                        await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+                    }
+                }
+
+
+
+            }
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(leave.Username))
+            {
+                leave.Username = User.Identity.Name;
+            }
+            if (string.IsNullOrEmpty(leave.ModifiedBy))
+            {
+                leave.ModifiedBy = User.Identity.Name;
+            }
+
+            if (leave.LeaveFrom.Month != leave.LeaveTo.Month)
+            {
+                var from = leave.LeaveFrom;
+                var to = leave.LeaveTo;
+                while (from <= to)
+                {
+                    DateTime nextDay = new DateTime(from.Year, from.Month, 1).AddMonths(1).AddDays(-1);
+
+                    if (nextDay > to)
+                    {
+                        nextDay = to;
+                    }
+
+                    LeaveModel leaveModel = new LeaveModel()
+                        {
+                            Username = leave.Username,
+                            LeaveTypeId = leave.LeaveTypeId,
+                            LeaveType = leave.LeaveType,
+                            LeaveFrom = from,
+                            LeaveTo = nextDay,
+                            //NumberOfDays = leave.NumberOfDays,
+                            LeaveStatus = leave.LeaveStatus,
+                            Reason = leave.Reason,
+                            AllDay = leave.AllDay,
+                            IsMorning = leave.IsMorning,
+                            Remark = leave.Remark,
+                            HREmail = leave.HREmail,
+                        };
+
+                    leaveModel.NumberOfDays = (decimal)CalculateNumberOfDays(leaveModel);
+
+                    if (leave.LeaveFrom.Month == leaveModel.LeaveTo.Month)
+                    {
+                        var res = await leaveService.UpdateLeaveAsync((LeaveModel)e.DataItem, leaveModel);
+                        if (res.Success)
+                        {
+                            await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+                            // commonService.LeaveSendEmail(leaveModel);
+                        }
+                        else
+                        {
+                            await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+                        }
+                    }
+                    else
+                    {
+                        var res = await leaveService.InsertLeaveAsync(leaveModel);
+                        if (res.Success)
+                        {
+                            await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+                            // commonService.LeaveSendEmail(leaveModel);
+                        }
+                        else
+                        {
+                            await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+                        }
+                    }
+
+                    from = nextDay.AddDays(1);
+                }
+            }
+            else
+            {
+                var res = await leaveService.UpdateLeaveAsync((LeaveModel)e.DataItem, leave);
+                if (res.Success)
+                {
+                    await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+                    // commonService.LeaveSendEmail(leave);
+                }
+                else
+                {
+                    await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+                }
+            }
+        }
+        await GetLeaveDataAsync();
+    }
+
+    private async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        leaveService.DeleteLeaveAsync((LeaveModel)e.DataItem);
+        await GetLeaveDataAsync();
+    }
+
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private double CalculateNumberOfDays(LeaveModel leave)
+    {
+        double totalDays = (leave.LeaveTo - leave.LeaveFrom).TotalDays + 1;
+        var from = leave.LeaveFrom;
+        var to = leave.LeaveTo;
+        double diffSkip = 0;
+        while (from <= to)
+        {
+            if (from.DayOfWeek == DayOfWeek.Sunday || from.DayOfWeek == DayOfWeek.Saturday || CheckHoliday(HolidaySource, from))
+                diffSkip++;
+            from = from.AddDays(1);
+        }
+        var r = totalDays - diffSkip;
+        // for ALL DAY/HALF DAY
+        if (!leave.AllDay && (leave.LeaveFrom == leave.LeaveTo))
+            r = r - 0.5;
+
+        return r;
+    }
+
+    private bool CheckHoliday(IEnumerable<HolidayModel> holidays, DateTime cdate)
+    {
+        var r = false;
+        if (holidays.Any())
+        {
+            foreach (var h in holidays)
+            {
+                var from = h.HolidayDateFr;
+                var to = h.HolidayDateTo;
+                while (from <= to)
+                {
+                    if ((from - cdate).TotalDays == 0)
+                    {
+                        r = true;
+                        break;
+                    }
+                    from = from.AddDays(1);
+                }
+            }
+        }
+        return r;
+    }
+    //async Task ExportXlsx_Click() {
+    //   await Grid.ExportToXlsxAsync("ExportResult", new GridXlExportOptions() {
+    //        ExportSelectedRowsOnly = true,
+    //        CustomizeCell = OnCustomizeCell
+    //    });
+    //}
+
+}

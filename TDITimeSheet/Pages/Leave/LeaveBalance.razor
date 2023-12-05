@@ -1,0 +1,474 @@
+﻿@page "/leave_balance"
+@using System.Globalization;
+@using System.Security.Claims;
+
+@attribute [Authorize]
+
+@inject TDI.Application.Interfaces.ILeaveBalanceService leaveBalanceService
+@inject TDI.Application.Interfaces.ILeaveTypeService leaveTypeService
+@inject TDI.Application.Interfaces.IUserService userService
+@inject CommonController commonService
+@inject TDI.Application.Interfaces.ICountryService countryService
+
+<PageTitle>TDI - Leave Balance</PageTitle>
+
+@*<h3>LeaveBalance</h3>*@
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Leave Balance</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+            @*@if (DataSource != null && DataSource.Count() > 0)
+            {
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+
+            }*@
+            @*kiểm tra button có insert không*@
+            @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+            {
+                <DxButton class="btn add-btn" Click="() => DownloadTemplateFromURL()" IconCssClass="fa fa-file-excel-o" Text="Template" RenderStyle="ButtonRenderStyle.None" />
+
+                <button class="btn add-btn" type="button" onclick="document.getElementById('flPicker').click()">
+                    <span class="dxbl-image fa fa-file-excel-o" aria-hidden="true"></span>
+                    <span>Import</span>
+                </button>
+                <InputFile id="flPicker" OnChange="@OnInputFilChange" hidden />
+
+                <DxButton class="btn add-btn" Click="() => OnAddNewRow() " IconCssClass="fa fa-plus" Text="New" RenderStyle="ButtonRenderStyle.None" />
+
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+
+<DxGrid @ref="Grid" style="height: calc(100vh - 27vh)"
+        Data="@DataSource"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditModelSaving="OnEditModelSaving"
+        DataItemDeleting="OnDataItemDeleting"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        @* <DxGridDataColumn FieldName="UserName" MinWidth="100" /> *@
+        <DxGridDataColumn FieldName="FullName" MinWidth="100" />
+        <DxGridDataColumn FieldName="CountryName" MinWidth="100"/>
+        <DxGridDataColumn FieldName="Year" MinWidth="100" DisplayFormat="d" />
+        <DxGridDataColumn FieldName="LeaveType" MinWidth="100" />
+        <DxGridDataColumn FieldName="LeaveQuota" MinWidth="100" />
+        @*<DxGridDataColumn FieldName="BringLeave" Width="6%" Caption="Carry Foward" />*@
+        <DxGridDataColumn FieldName="Remark" />
+
+        <DxGridCommandColumn MinWidth="200">
+            <HeaderTemplate>
+                @*<DxButton Click="() => Grid.StartEditNewRowAsync()" Text="New" RenderStyle="ButtonRenderStyle.Info" />*@
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    var leave = (LeaveBalanceModel)context.DataItem;
+                   
+                }
+                @*<DxButton Click="() => Grid.StartEditDataItemAsync(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                <DxButton Click="() => Grid.ShowDataItemDeleteConfirmation(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />*@
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                {
+                    <DxButton Click="() => OnEditRow(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                }
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                {
+                    <DxButton Click="() => OnDeleteRow(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+    <EditFormTemplate Context="editFormContext">
+        @{
+            var leave = (LeaveBalanceModel)editFormContext.EditModel;
+            
+            if (editFormContext.DataItem == null)
+            {
+                leave.Year = DateTime.Now.Year;
+            }
+
+            LeaveTypeSourceBind = new List<LeaveTypeModel>();
+            if (!string.IsNullOrEmpty(leave.UserName))
+            {
+                var user = UserDataSource.Where(u => u.UserName == leave.UserName).FirstOrDefault();
+                if (user != null)
+                {
+                    leave.FullName = user.FullName;
+
+                    if (user.CountryId == 0)
+                    {
+                        LeaveTypeSourceBind = LeaveTypeSource;
+                    }
+                    else
+                    {
+                        LeaveTypeSourceBind = LeaveTypeSource.Where(t => t.CountryId == user.CountryId).ToList();
+                        //LeaveTypeSourceBind = LeaveTypeSourceBind.Where(x => x.Id == 1);
+                    }
+                }
+            }
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="UserName" ColSpanMd="12">
+                <DxComboBox Data="@UserDataSource"
+                            TextFieldName="@nameof(LeaveBalanceModel.UserName)"
+                            ValueFieldName="@nameof(LeaveBalanceModel.UserName)"
+                            CssClass="cw-480"
+                @bind-Value="@leave.UserName"
+                            FilteringMode="DataGridFilteringMode.Contains"
+                            ReadOnly="@(editFormContext.DataItem == null ? false : true)" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="FullName" ColSpanMd="12">
+                <DxTextBox @bind-Text="@leave.FullName" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Year" ColSpanMd="12">
+                <DxSpinEdit @bind-Value="@leave.Year" DisplayFormat="d" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="LeaveType" ColSpanMd="12">
+                <DxComboBox Data="@LeaveTypeSourceBind"
+                            TextFieldName="@nameof(LeaveTypeModel.Name)"
+                            ValueFieldName="@nameof(LeaveTypeModel.Id)"
+                            CssClass="cw-480"
+                            @bind-Value="@leave.TypeId"
+                            ReadOnly="@(editFormContext.DataItem == null ? false : true)" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="LeaveQuota" ColSpanMd="12">
+                <DxSpinEdit @bind-Value="@leave.LeaveQuota" />
+            </DxFormLayoutItem>
+           @*  <DxFormLayoutItem Caption="LeaveCountry" ColSpanMd="6">
+                <DxComboBox Data="@LeaveCountryDataSource"
+                            TextFieldName="@nameof(CountryModel.Name)"
+                            ValueFieldName="@nameof(CountryModel.Id)"
+                            CssClass="cw-480"
+                @bind-Value="@leave.CountryId"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem> *@
+           @* <DxFormLayoutItem Caption="BringLeave" ColSpanMd="6">
+                <DxSpinEdit @bind-Value="@leave.BringLeave" />
+            </DxFormLayoutItem>*@
+            <DxFormLayoutItem Caption="Remark" ColSpanMd="12">
+                <DxTextBox @bind-Text="@leave.Remark" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem ColSpanMd="12">
+                <ValidationSummary />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+    string Function = "LEAVEBALANCE";
+    string RoleName = "";
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    protected IEnumerable<LeaveBalanceModel> DataSource { get; set; }
+    protected IGrid Grid { get; set; }
+    List<RolePermission> permissionList = new List<RolePermission>();
+
+    IEnumerable<UserModel> UserDataSource { get; set; }
+
+    IEnumerable<LeaveTypeModel> LeaveTypeSource { get; set; }
+    IEnumerable<LeaveTypeModel> LeaveTypeSourceBind { get; set; }
+    IEnumerable<CountryModel> LeaveCountryDataSource { get; set; }
+
+    string Title = "Leave Balance";
+    public void OnAddNewRow()
+    {
+        Title = "Add New Leave Balance"; Grid.StartEditNewRowAsync();
+    }
+    public void OnEditRow(object DataItem)
+    {
+        Title = "Edit Leave Balance"; Grid.StartEditDataItemAsync(DataItem);
+    }
+    public void OnDeleteRow(object DataItem)
+    {
+        Title = "Delete Leave Balance"; Grid.ShowDataItemDeleteConfirmation(DataItem);
+    }
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            User = authState?.User;
+
+            if (User.Claims != null && User.Claims.Count() > 0)
+            {
+                var roleClaim = User.Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                RoleName = roleClaim.Value;
+            }
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetCountryDataAsync();
+                await GetFunctionByRole();
+
+                await GetLeaveTypeAsync();
+                await GetLeaveBalanceAsync();
+                await GetUsersDataAsync();
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+
+        //return base.OnInitializedAsync();
+    }
+    private async Task GetCountryDataAsync()
+    {
+
+        LeaveCountryDataSource = new List<CountryModel>();
+        var result = await countryService.GetCountryActive(-1);
+        if (result.Success)
+        {
+            if (result.Data is List<CountryModel> countries)
+            {
+
+                LeaveCountryDataSource = countries;
+            }
+        }
+    }
+    private async Task OnEditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var leave = (LeaveBalanceModel)e.EditModel;
+
+        if (e.IsNew)
+        {
+            var res = leaveBalanceService.InsertLeaveBalance(User.Identity.Name, leave);
+            // if(leave.UserName.Count() > 1 && leave.TypeId > 1)
+            // {
+            //     Swal.FireAsync("Warning", "Username already exists !", SweetAlertIcon.Warning);
+
+            // }
+            // @foreach (var item in DataSource)
+            // {
+            //     if (leave.UserName == item.UserName && leave.TypeId == item.TypeId)
+            //     {
+            //         Swal.FireAsync("Warning", "Username already exists !", SweetAlertIcon.Warning);
+            //     }
+            // }
+          
+            if (string.IsNullOrEmpty(leave.UserName) && leave.LeaveType == null && leave.TypeId == 0)
+            {
+                Swal.FireAsync("Warning: UserName or Leave type to invalid", "", SweetAlertIcon.Warning);
+            }
+            else
+            {
+                if (res.Success)
+                {
+                    await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+                }
+                else
+                {
+                    await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+                }
+            }
+          
+        }
+        else
+        {
+            var res = leaveBalanceService.UpdateLeaveBalance(User.Identity.Name, (LeaveBalanceModel)e.DataItem, leave);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        await GetLeaveBalanceAsync();
+    }
+
+    private async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        leaveBalanceService.DeleteLeaveBalance((LeaveBalanceModel)e.DataItem);
+        await GetLeaveBalanceAsync();
+    }
+
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private async Task GetLeaveBalanceAsync()
+    {
+        DataSource = new List<LeaveBalanceModel>();
+        var result = await leaveBalanceService.GetAllLeaveBalance(0);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveBalanceModel> leaves)
+            {
+                DataSource = leaves;
+            }
+        }
+    }
+
+    private async Task GetLeaveTypeAsync()
+    {
+        LeaveTypeSource = new List<LeaveTypeModel>();
+        var result = await leaveTypeService.GetAllLeaveType(0);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveTypeModel> leaveTypes)
+            {
+                LeaveTypeSource = leaveTypes;
+            }
+        }
+    }
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      "Leave Balance",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+    private async Task DownloadTemplateFromURL()
+    {
+        var fileName = "LeaveBalanceTemplate.xlsx";
+
+        var fileURL = $"{URLHelper.BaseUri}Templates/LeaveTemplate/LeaveBalanceTemplate.xlsx";
+
+        await js.InvokeVoidAsync("triggerFileDownload", fileName, fileURL);
+    }
+
+    private async Task OnInputFilChange(InputFileChangeEventArgs e)
+    {
+        foreach (var File in e.GetMultipleFiles(e.FileCount))
+        {
+            if (File.ContentType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            {
+                var stream1 = e.File.OpenReadStream(); //need a stream here that ReadExcel() can use!
+                var stream2 = new MemoryStream();
+                await stream1.CopyToAsync(stream2);
+                stream1.Close();
+                stream2.Position = 0;
+
+                var dataSet = commonService.ReadExcelData(stream2);
+
+                var res = leaveBalanceService.ImportLeaveBalance(User.Identity.Name, dataSet.Tables[0]);
+
+                if (res.Success)
+                {
+                    await Swal.FireAsync("Import Data", res.Message, SweetAlertIcon.Success);
+                }
+                else
+                {
+                    await Swal.FireAsync("Import Data", res.Message, SweetAlertIcon.Error);
+                }
+
+                break;
+            }
+        }
+
+        await GetLeaveBalanceAsync();
+    }
+
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+    private async Task GetUsersDataAsync()
+    {
+        UserDataSource = new List<UserModel>();
+        var result = await userService.GetAllUser(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<UserModel> users)
+            {
+                UserDataSource = users;
+                //LeaveTypeSourceBind = LeaveTypeSourceBind.Where(x=>x.Id == 1);
+            }
+        }
+    }
+}

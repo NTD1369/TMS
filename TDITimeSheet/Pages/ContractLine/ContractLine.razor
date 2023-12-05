@@ -1,0 +1,220 @@
+﻿@page "/contractLine"
+@inject ContractLineController contractLineService
+
+<h3>WBS</h3>
+<button class="btn btn-success" @onclick="@(()=>showContractLineAdd())">Add</button>
+
+<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            @*<th>ContractCode</th>*@
+            <th>Project</th>
+            <th>WBS</th>
+            <th>Description</th>
+            <th>StartDate</th>
+            <th>EndDate</th>
+            <th>Mandays</th>
+            @*<th>MandaysUpdate</th>*@
+            <th>Bill</th>
+            <th>Status</th>
+
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in contractLines)
+        {
+            <tr>
+                @*<td>@item.ContractCode</td>*@
+                <td>@item.ContractName</td>
+                <td>@item.LineCode</td>
+                <td>@item.Description</td>
+                <td>@item.StartDate.ToString("MM-dd-yyyy")</td>
+                <td>@item.EndDate.ToString("MM-dd-yyyy")</td>
+                <td>@item.Mandays</td>
+                @*<td>@item.MandaysUpdate</td>*@
+                <td>@item.Bill</td>
+                <td>@item.Status</td>
+
+                <td><button type="button" @onclick="(async ()=> await ShowContractLineEdit(item.ContractLineId))" class="btn btn-info">Edit</button></td>
+                <td><button type="button" @onclick="(async () => await DelectLineId(item.ContractLineId))" class="btn btn-danger">Delete</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    public class DateWBSHeaderModel
+    {
+        public DateTime Date { get; set; }
+        public string DayOfWeek { get; set; }
+        // Mình thích thêm giá trị gì để lưu thì mình gắn vào những custom field
+        public string CustomF1 { get; set; }
+        public string CustomF2 { get; set; }
+        public string CustomF3 { get; set; }
+        public string CustomF4 { get; set; }
+        public string CustomF5 { get; set; }
+
+    }
+    //[Parameter] public int WBSId { get; set; }
+    private string Username{ get; set; }
+
+    public List<DateWBSHeaderModel> viewWBSHeader = new List<DateWBSHeaderModel>();
+
+    private List<WBSHeaderModel> contractLines = new List<WBSHeaderModel>();
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState;
+        Username = authState.User.Identity.Name;
+        await LoadData();
+
+    }
+
+    private async Task LoadData()
+    {
+        DateTime fromDate = new DateTime(1900, 01, 01);
+        DateTime toDate = new DateTime(2023, 01, 01);
+
+        var itemWBS = await contractLineService.GetWBSHeader(Username, fromDate, toDate, "");
+        if (itemWBS.Success == true)
+        {
+            contractLines = itemWBS.Data as List<WBSHeaderModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data WBS",
+              itemWBS.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    public async Task showContractLineAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(AddContractLine.Message), "");
+        var messageForm = Modal.Show<AddContractLine>("Add WBS", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed == true)
+        {
+            var wbs = result.Data as WBSHeaderModel;
+            var resultUpdate = await contractLineService.Create(wbs);
+            if (resultUpdate.Success == true)
+            {
+                
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Create WBS",
+               resultUpdate.Message,
+               SweetAlertIcon.Success
+               );
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create WBS",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+
+    private async Task ShowContractLineEdit(int id)
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(UpdateContractLine.lineId), id);
+
+             var options = new ModalOptions() 
+            { 
+                Size = ModalSize.Large   
+            };
+
+        var messageForm = Modal.Show<UpdateContractLine>("Update WBS", parameters, options);
+        var result = await messageForm.Result;
+        if (result.Confirmed)
+        {
+            var wbs = result.Data as WBSHeaderModel;
+            var resultUpdate = await contractLineService.Update(wbs);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Update WBS",
+                resultUpdate.Message,
+               SweetAlertIcon.Success
+               );
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update WBS",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+        
+    }
+
+    protected async Task DelectLineId(int id)
+    {
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of WBS {id} Data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await contractLineService.Delete(id);
+            if (resultDelete.Success == true)
+            {
+                //URLHelper.NavigateTo("/contractLine", true);
+                await LoadData();
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted WBS",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+   
+}

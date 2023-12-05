@@ -1,0 +1,552 @@
+﻿@page "/updateContractLine"
+@inject ContractLineController contractLineService
+@inject ProjectController projectService
+@inject ContractHeaderController contractService
+
+@inject ContractAssignMemberController contractAssignService
+@inject UserController userService
+
+<EditForm Model="wbs" OnValidSubmit="SaveUpdateWBS">
+    <div style="margin-top:10px;text-align:right">
+        <button type="button" class="btn btn-success" @onclick="WbsUpdateEployee">Save &  Update Employee</button>
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelUpdateLine">Cancel</button>
+    </div>
+    @*<div class="mb-3">
+    <label for="ContractCode">Contract Code</label>
+    <div class="">
+    <DxComboBox Data="@a" Id="cbb_ContractCode"
+    ListRenderMode="ListRenderMode.Virtual"
+    FilteringMode="DataGridFilteringMode.Contains"
+    TextFieldName="@nameof(ctrModel.ContractName)"
+    ValueFieldName="@nameof(ctrModel.ContractCode)"
+    @bind-Value="wbs.ContractCode"
+    CssClass="cw-480" />
+    </div>
+    </div>*@
+    <div class="mb-3">
+        <div class="">
+            <label for="PrjCode">Project Name</label>
+
+            <DxComboBox Data="@prjs" Id="cbb_PrjCode" ReadOnly=true
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(ProjectModel.PrjName)"
+                        ValueFieldName="@nameof(ProjectModel.PrjCode)"
+                        @bind-Value="wbs.ProjectCode"
+                        CssClass="cw-480" />
+        </div>
+    </div>
+    <div class="mb-3">
+        <div>
+            <label for="Name">WBS Name</label>
+            <InputText class="form-control" @bind-Value="wbs.LineCode"></InputText>
+        </div>
+
+    </div>
+    @*<div class="mb-3">
+    <div>
+    <label for="Name">Description</label>
+    <InputText class="form-control" @bind-Value="wbs.Description"></InputText>
+    </div>
+
+    </div>*@
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                <div class="">
+                    <label for="Name">StartDate</label>
+                    <DxDateEdit style="font-size:large" PickerDisplayMode="DatePickerDisplayMode.Calendar" @bind-Date="@wbs.StartDate" CssClass="cw-320" />
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                <div class="">
+                    <label for="Name">EndDate</label>
+                    <DxDateEdit style="font-size:large" PickerDisplayMode="DatePickerDisplayMode.Calendar" @bind-Date="@wbs.EndDate" CssClass="cw-320" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div style="margin-top:20px">
+        <label for="Name">Manday</label>
+        <InputNumber class="form-control" @bind-Value="wbs.Mandays"></InputNumber>
+    </div>
+    @*<div>
+    <label for="Name">Manday Update</label>
+    <div>
+    <InputNumber class="form-control" @bind-Value="wbs.MandaysUpdate"></InputNumber>
+    </div>
+    </div>*@
+    @* <div>
+    <label for="Name">Bill</label>
+    <div>
+    <InputText class="form-control" @bind-Value="wbs.Bill"></InputText>
+    </div>
+    </div>
+    <div class="mb-3">
+    <label for="Name">Status</label>
+    <div>
+    <InputText class="form-control" @bind-Value="wbs.Status"></InputText>
+    </div>
+
+    </div>*@
+    <div class="row" style="margin-top:10px">
+        <div class="col-md-2"> <label>Bill</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@checkBill"
+                        CheckedExpression="@(() => checkBill)"
+                        CheckedChanged="@((bool value) => CheckedChangedBill(value))">
+            </DxCheckBox>
+        </div>
+
+        <div class="col-md-2"> <label>Active</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+
+        <div class="col-md-2"> <label>Additional</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@checkAdditional"
+                        CheckedExpression="@(() => checkAdditional)"
+                        CheckedChanged="@((bool value) => CheckedChangedAdditional(value))">
+            </DxCheckBox>
+
+        </div>
+    </div>
+
+
+
+
+</EditForm>
+@*
+<DxGrid @ref="Grid"
+        Data="@contractAssignL"
+        KeyFieldName="LineId"
+
+        EditModelSaving="Grid_EditModelSaving"
+        EditMode="GridEditMode.EditForm"
+        ShowSearchBox="false">
+    <Columns>
+
+        <DxGridDataColumn FieldName="EmployeeId" MinWidth="100" Caption="Employee" />
+        <DxGridDataColumn FieldName="StartDate" Caption="StartDate" Width="20%" MinWidth="100" TextAlignment="GridTextAlignment.Center" />
+        <DxGridDataColumn FieldName="EndDate" Caption="EndDate" Width="20%" MinWidth="100" TextAlignment="GridTextAlignment.Center" />
+        <DxGridDataColumn FieldName="Mandays" MinWidth="80" />
+        <DxGridDataColumn FieldName="Description" Width="40%" MinWidth="50" TextAlignment="GridTextAlignment.Center" />
+
+        <DxGridCommandColumn Width="80px">
+            <HeaderTemplate>
+                <DxButton Click="() => Grid.StartEditNewRowAsync()" Text="New" RenderStyle="ButtonRenderStyle.Info" />
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    <DxButton Click="() => Grid.StartEditDataItemAsync(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                    //<DxButton Click="() => Grid.ShowDataItemDeleteConfirmation(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+
+    </Columns>
+
+     <EditFormTemplate Context="editFormContext">
+        @{
+            var contractAssign = (ContractAssignMemberModel)editFormContext.EditModel;
+            if (editFormContext.DataItem == null)
+            {
+                if (contractAssign.StartDate.Year == 1)
+                {
+                    contractAssign.StartDate = DateTime.Today;
+                }
+                if (contractAssign.EndDate.Year == 1)
+                {
+                    contractAssign.EndDate = DateTime.Today;
+                }
+                contractAssign.ContractCode = wbs.ContractCode ;
+                contractAssign.ContractLineId = wbs.ContractLineId.ToString();
+                contractAssign.Mandays = wbs.Mandays;
+            }
+            else
+            {}
+        }
+        <DxFormLayout CssClass="w-800">
+            <DxFormLayoutItem Caption="Employee" ColSpanMd="6">
+                <DxComboBox Data="@userL" Id="cbb_User" style="font-size:large"
+                            ListRenderMode="ListRenderMode.Virtual"
+                            FilteringMode="DataGridFilteringMode.Contains"
+                            TextFieldName="@nameof(UserModel.UserName)"
+                            ValueFieldName="@nameof(UserModel.UserName)"
+                            @bind-Value="@contractAssign.EmployeeId"
+                            CssClass="cw-480" />
+
+
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Mandays" ColSpanMd="6">
+                <DxSpinEdit @bind-Value="@contractAssign.Mandays" />
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="StartDate" ColSpanMd="6">
+                <DxDateEdit @bind-Date="@contractAssign.StartDate" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="EndDate" ColSpanMd="6">
+                <DxDateEdit @bind-Date="@contractAssign.EndDate" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Description" ColSpanMd="6">
+                <DxTextBox @bind-Text="@contractAssign.Description" />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+
+</DxGrid>
+
+*@
+@code {
+    public bool check { get; set; }
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            wbs.Status = "A";
+        }
+        else
+        {
+            wbs.Status = "I";
+
+        }
+    }
+
+    bool checkBill { get; set; }
+    void CheckedChangedBill(bool value)
+    {
+        checkBill = value;
+        if (checkBill == true)
+        {
+            wbs.Bill = "Y";
+        }
+        else
+        {
+            wbs.Bill = "N";
+
+        }
+    }
+    bool checkAdditional { get; set; }
+    void CheckedChangedAdditional(bool value)
+    {
+        checkAdditional = value;
+        if (checkAdditional == true)
+        {
+            wbs.Additional = "Y";
+        }
+        else
+        {
+            wbs.Additional = "N";
+
+        }
+    }
+    [Parameter] public int lineId { get; set; }
+
+    protected WBSHeaderModel wbs = new()
+        {
+            StartDate = DateTime.Now,
+            EndDate = DateTime.Now
+
+        };
+    [Parameter] public string Message { get; set; } = "";
+    private List<ProjectModel> prjs = new List<ProjectModel>();
+    [Parameter] public string projectCode { get; set; }
+
+    private List<ctrModel> a = new List<ctrModel>();
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadProject();
+        LoadContract();
+        var authState = await authenticationState;
+        wbs.UserCode = authState.User.Identity.Name;
+        var result = await contractLineService.GetById(lineId);
+        if (result.Success == true)
+        {
+            wbs = result.Data as WBSHeaderModel;
+            if (wbs.Status == "A")
+            {
+                check = true;
+            }
+            else
+            {
+                check = false;
+            }
+
+            if (wbs.Bill == "Y")
+            { 
+                checkBill = true;
+
+            }
+            else
+            {
+                checkBill = false;
+            }
+            if (wbs.Additional == "Y")
+            {
+                checkAdditional = true;
+
+            }
+            else
+            {
+                checkAdditional = false;
+
+            }
+
+        }
+        //Load_AsignUser(); //load grid
+        //LoadUser();
+    }
+
+    protected async Task SaveUpdateWBS()
+    {
+        //var resultUpdate = await contractLineService.Update(wbs);
+        //if (resultUpdate.Success == true)
+        //{
+        //    URLHelper.NavigateTo("/contractHeader");
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Update Contract Line",
+        //      resultUpdate.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+
+        if (string.IsNullOrEmpty(wbs.LineCode))
+        {
+            await Swal.FireAsync(
+             "LoadData",
+             "Please input WBS Name",
+             SweetAlertIcon.Error
+             );
+            return;
+        }
+
+        await BlazoredModal.CloseAsync(ModalResult.Ok(wbs));
+
+    }
+    public async void LoadProject()
+    {
+        var dataPrj = projectService.GetProject();
+
+        if (dataPrj.Result.Success == true)
+        {
+            prjs = dataPrj.Result.Data as List<ProjectModel>;
+            var prj = prjs.Where(x => x.PrjCode == projectCode);
+            //if (prj.Any())
+            //{
+            //    wbs.PrjName = prj.FirstOrDefault().PrjName;
+
+            //}
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data Project",
+             dataPrj.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    public async void LoadContract()
+    {
+        DateTime fromDate = new DateTime(1900, 01, 01);
+        DateTime toDate = new DateTime(2023, 01, 01);
+
+        var dataContract = contractService.GetContractHeader(wbs.UserCode, fromDate, toDate);
+        if (dataContract.Result.Success == true)
+        {
+            a = dataContract.Result.Data as List<ctrModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data WBS",
+             dataContract.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+    private void CancelUpdateLine()
+    {
+        //URLHelper.NavigateTo("/contractHeader");
+        BlazoredModal.CancelAsync();
+
+
+    }
+
+    #region "Xu ly Asign User"
+
+
+    IGrid Grid { get; set; }
+    //private List<ContractAssignMemberModel> contractAssignL = new List<ContractAssignMemberModel>();
+    IEnumerable<ContractAssignMemberModel> contractAssignL { get; set; }
+    private List<UserModel> userL = new List<UserModel>();
+
+    private async Task Load_AsignUser()
+    {
+        //DateTime fromDate = new DateTime(1900, 01, 01);
+        //DateTime toDate = new DateTime(2023, 01, 01);
+
+        var itemcontractAssignL = await contractAssignService.GetContractByContractLineId(wbs.ContractCode, wbs.ContractLineId.ToString());
+        if (itemcontractAssignL.Success == true)
+        {
+            //contractAssignL = itemcontractAssignL.Data as List<ContractAssignMemberModel>;
+
+            if (itemcontractAssignL.Data is List<ContractAssignMemberModel> aApprovals)
+            {
+                contractAssignL = aApprovals;
+
+                //SelectedDataItems =DataSource.Skip(1).Take(2).ToList();
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "LoadData WBS Assign Member",
+              itemcontractAssignL.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    public async void LoadUser()
+    {
+
+        var dataUser = userService.GetAllUser();
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "LoadData User",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    public async Task WbsUpdateEployee()
+    {
+        //hỏi có thực hiện không
+        SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Update Contract Asign Member",
+                Text = $"Do you want to update?",
+                Icon = SweetAlertIcon.Question,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+
+        if (resultaz.IsConfirmed)
+        {
+            var resultUpdate = await contractLineService.WBSUpdateDateForAllMember(wbs);
+            if (resultUpdate.Success == true)
+            {
+                //lấy confirm nút ok đêt thực hiênk
+                SweetAlertResult resultOk = await Swal.FireAsync(
+                 "Update Contract",
+                 "Success",
+                 SweetAlertIcon.Success
+                 );
+                if (resultOk.IsConfirmed)
+                {
+                    URLHelper.NavigateTo("/contractHeader/" + wbs.ContractCode, true);
+                }
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update Contract Assign Member",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+               
+            }
+        }
+       
+    }
+    async Task Grid_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var contractAssignL = (ContractAssignMemberModel)e.EditModel;
+        if (e.IsNew)
+        {
+            var resultAdd = await contractAssignService.Create(contractAssignL);
+            if (resultAdd.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create Contract Asign Member",
+                        Text = $"Create Contract Asign Member Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Contract Assign Member",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+                return;
+            }
+        }
+
+        else
+        {
+            //_message = result.Data.ToString();
+            var resultUpdate = await contractAssignService.Update(contractAssignL);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Update WBS Assign Member",
+                resultUpdate.Message,
+               SweetAlertIcon.Success
+               );
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update WBS Assign Member",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+                return;
+            }
+        }
+
+        await Load_AsignUser(); //load grid
+    }
+
+    #endregion
+
+}

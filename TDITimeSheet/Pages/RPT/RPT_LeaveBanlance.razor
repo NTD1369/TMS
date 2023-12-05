@@ -1,0 +1,253 @@
+﻿@page "/leave_balance_report"
+
+@inject TDI.Application.Interfaces.ILeaveService leaveService
+@using System.Security.Claims;
+
+<PageTitle>TDI - Leave Balance</PageTitle>
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager 1</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Leave Balance</li>
+            </ul>
+        </div>
+       @* <div class="col-auto ml-auto" style="text-align:right">
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+        </div>*@
+        
+    </div>
+</div>
+<div class="row" style="text-align:right;margin-top:32px">
+    <div class="col-md-12" style="text-align:right">
+        <DxButton class="btn btn-success" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+    </div>
+</div>
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+<DxGrid @ref="Grid" style="height: calc(100vh - 22vh); margin-top: 10px" 
+        Data="@DataSource"
+       PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        @* <DxGridDataColumn FieldName="UserName"  MinWidth="90" /> *@
+        <DxGridDataColumn FieldName="FullName"  MinWidth="100" />
+        <DxGridDataColumn FieldName="LeaveCountryName" Caption="Leave Country" MinWidth="100" />
+        <DxGridDataColumn FieldName="Team"  MinWidth="80" />
+        <DxGridDataColumn FieldName="LeaveType"  MinWidth="100" />
+        <DxGridDataColumn FieldName="Year"  MinWidth="70" DisplayFormat="d" />
+        <DxGridDataColumn FieldName="LeaveQuota" MinWidth="100" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="BringLeave" MinWidth="90" DisplayFormat="N1" Caption="Carry forward 2022" />
+        <DxGridDataColumn FieldName="LeaveTotal" Caption="Total leave 2023" MinWidth="100" />
+        <DxGridDataColumn FieldName="M1" MinWidth="50" Caption="@(new DateTime(2023,1,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M2" MinWidth="50" Caption="@(new DateTime(2023,2,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M3" MinWidth="50" Caption="@(new DateTime(2023,3,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M4" MinWidth="50" Caption="@(new DateTime(2023,4,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M5" MinWidth="50" Caption="@(new DateTime(2023,5,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M6" MinWidth="50" Caption="@(new DateTime(2023,6,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M7" MinWidth="50" Caption="@(new DateTime(2023,7,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M8" MinWidth="50" Caption="@(new DateTime(2023,8,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M9" MinWidth="50" Caption="@(new DateTime(2023,9,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M10" MinWidth="50" Caption="@(new DateTime(2023,10,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M11" MinWidth="50" Caption="@(new DateTime(2023,11,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="M12" MinWidth="50" Caption="@(new DateTime(2023,12,1).ToString("MMM"))" DisplayFormat="N1" />
+        <DxGridDataColumn FieldName="LeaveSummary" MinWidth="80" DisplayFormat="N1" Caption="Leave Taken"/>
+        <DxGridDataColumn FieldName="OffInLieu" Caption="Off-in-Lieu(OT)" MinWidth="90" />
+        <DxGridDataColumn FieldName="LeaveRemain" MinWidth="90" DisplayFormat="N1" Caption="Leave Remaining" />
+        <DxGridDataColumn FieldName="AnotherLeave" MinWidth="90" DisplayFormat="N1" Caption="Another Leave Taken" />
+    </Columns>
+</DxGrid>
+
+@code {
+    string Function = "LEAVEBALANCEREPORT";
+    string RoleName = "";
+    string Title = "LEAVEBALANCEREPORT";
+    List<RolePermission> permissionList = new List<RolePermission>();
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<LeaveBalanceReportModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+    private int Year { get; set; }
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //if (authenticationState is not null)
+        //{
+        //    var authState = await authenticationState;
+        //    User = authState?.User;
+        //    Year = DateTime.Now.Year;
+
+        //    //lấy roles
+        //    var Claims = authState.User.Claims;
+        //    //if (Claims != null && Claims.Count() > 0)
+        //    //{
+        //    //    var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+        //    //    RoleName = roleClaim.Value;
+        //    //}
+        //    if (User?.Identity is not null && User.Identity.IsAuthenticated)
+        //    {
+        //        await GetLeaveDashboardDataAsync();
+
+        //    }
+        //    else
+        //    {
+        //        URLHelper.NavigateTo("/");
+        //    }
+        //}
+
+        //return base.OnInitializedAsync();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                User = authState?.User;
+                Year = DateTime.Now.Year;
+
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (User?.Identity is not null && User.Identity.IsAuthenticated)
+                {
+
+                    //lấy quyền
+                    await GetFunctionByRole();
+                    await GetLeaveDashboardDataAsync();
+                    Grid.BeginUpdate();
+                    Grid.Data = DataSource;
+                    Grid.EndUpdate();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+            }
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private async Task GetLeaveDashboardDataAsync()
+    {
+        DataSource = new List<LeaveBalanceReportModel>();
+        var result = await leaveService.GetLeaveBalanceReport(User.Identity.Name, string.Empty, this.Year);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveBalanceReportModel> leaveReports)
+            {
+                DataSource = leaveReports;
+            }
+        }
+    }
+
+    protected async Task ExportXlsx_Click()
+    {
+        await Grid.ExportToXlsxAsync("Leave Balance Report " + DateTime.Now.ToString("yyyyyMMdd"), new GridXlExportOptions()
+        {
+            //ExportSelectedRowsOnly = ExportSelectedRowsOnly,
+            //CustomizeCell = OnCustomizeCell
+        });
+    }
+}

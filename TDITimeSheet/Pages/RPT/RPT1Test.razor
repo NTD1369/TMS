@@ -1,0 +1,147 @@
+﻿@page "/RPT1Test"
+@inject ApprovalTimeSheetSummaryController rpt_approvalTimeSheetService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime Js
+
+<h3>Billable Report @overrideFromDate ~ @overrideToDate </h3>
+<div class="row">
+    <div class="col-md-2" style="display:flex">
+        <div>From: </div>
+        <div class="form-group form-focus" style="margin-left:7px">
+            <div class="">
+
+                <DxDateEdit Date="overrideFromDate" DateExpression="@(() => overrideFromDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "FromDate"))" CssClass="cw-320"  />
+              
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-2" style="display:flex">
+        <div>To: </div>
+        <div class="form-group form-focus" style="margin-left:7px">
+            <div class="">
+
+                <DxDateEdit Date="overrideToDate" DateExpression="@(() => overrideToDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "ToDate"))" CssClass="cw-320"  />
+               
+            </div>
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+        <button class="btn btn-primary" @onclick="@(()=>LoadData())">Filter</button>
+    </div>
+
+    <div class="col-md-4">
+        <button class="btn btn-primary" @onclick="@(()=>PrintTest())">Print Test</button>
+    </div>
+
+</div> 
+
+@*<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Country</th>
+            <th>Team</th>
+            <th>Consultant Name</th> 
+            <th>User Type</th>
+            <th>Hours UnSubmitted</th>
+            <th>Hours Missing</th>
+            <th>Hours Pending</th>
+            <th>Hours Approved</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in approvals)
+        {
+            <tr>
+                <td>@item.Country</td>
+                <td>@item.Department</td>
+                <td>@item.UserCode</td>
+                <td>@item.ResourcesType</td>
+                <td>@item.UnSumitted</td>
+                <td>@item.HoursMissing</td>
+                <td>@item.HoursPending</td>
+                <td>@item.HoursApproved</td>
+                <td>@item.Total</td>
+            </tr>
+            
+        }
+    </tbody>
+   
+</table>*@
+<DxGrid Data="approvals" ShowSearchBox="true"
+        SelectionMode="GridSelectionMode.Single"
+        AllowSelectRowByClick="true">
+    <Columns>
+        <DxGridDataColumn FieldName="Country" Caption="Country" />
+        <DxGridDataColumn FieldName="Department" Caption="Team" />
+        <DxGridDataColumn FieldName="UserCode" Caption="Consultant Name" />
+        <DxGridDataColumn FieldName="ResourcesType" Caption="User Type" />
+        <DxGridDataColumn FieldName="UnSumitted" Caption="Hours UnSubmitted" />
+        <DxGridDataColumn FieldName="HoursMissing" Caption="Hours Missing" />
+        <DxGridDataColumn FieldName="HoursPending" Caption="Hours Pending" />
+        <DxGridDataColumn FieldName="HoursApproved" Caption="Hours Approved" />
+        <DxGridDataColumn FieldName="Total" Caption="Total" />
+
+    </Columns>
+</DxGrid>
+@code {
+
+
+    private DateTime overrideFromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);     //DateTime.Today;
+    private DateTime overrideToDate = DateTime.Today;
+    void OnDateChanged(DateTime newValue, string ObjType)
+    {
+        if (ObjType == "FromDate") { overrideFromDate = newValue; }
+        if (ObjType == "ToDate") { overrideToDate = newValue; } 
+    }
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private List<RPT_TimeEntrySummaryModel> approvals = new List<RPT_TimeEntrySummaryModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState;
+
+        await LoadData();
+    }
+    private async Task LoadData()
+    {
+        //DateTime fromDate = new DateTime(2023, 04, 01);
+        //DateTime toDate = new DateTime(2023, 04, 30);
+        var authState = await authenticationState;
+        string Username = authState.User.Identity.Name;
+
+        var itemApproval = await rpt_approvalTimeSheetService.RPT_TimeEntrySummary(overrideFromDate,overrideToDate, Username );
+        if (itemApproval.Success == true)
+        {
+            approvals = itemApproval.Data as List<RPT_TimeEntrySummaryModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data rpt_approvalTimeSheet",
+              itemApproval.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    private async Task PrintTest()
+    {
+        //NavigationManager.NavigateTo("/RPT_Billable_Report");
+        //URLHelper.NavigateTo("/RPT_Billable_Report");
+        await Js.InvokeVoidAsync("printPage1");
+        //JSRuntime.InvokeVoidAsync("print");
+
+    }
+
+
+}
+
+
+ 

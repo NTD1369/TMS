@@ -1,0 +1,49 @@
+﻿@page "/team/{teamId:int}"
+@inject TeamMemberController teamMemberService
+<h3>Detail</h3>
+<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            @*<th>Id</th>*@
+            <th>UserName</th>
+           
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in teamMemberL)
+        {
+                <tr>
+                    @*<th>@item.Id</th>*@
+                    <th>@item.UserName</th>
+                </tr>
+        }
+    </tbody>
+</table>
+@code {
+    [Parameter] public int teamId { get; set; }
+    private List<TeamMemberModel> teamMemberL = new List<TeamMemberModel>();
+    protected override async Task OnInitializedAsync()
+    {
+        
+        await LoadData();
+
+    }
+    private async Task LoadData()
+    {
+        var dataTeamMember = await teamMemberService.GetTeamMemberById(teamId);
+        if (dataTeamMember.Success == true)
+        {
+            teamMemberL = dataTeamMember.Data as List<TeamMemberModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Team Member",
+              dataTeamMember.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+}

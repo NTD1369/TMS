@@ -1,0 +1,20 @@
+﻿.continue-btn {
+    width: 100%;
+}
+
+.excel-btn {
+    background-color: #be2c2d;
+    border: 1px solid #be2c2d;
+    border-radius: 50px;
+    color: #fff;
+    font-weight: 500;
+    min-width: 100px;
+}
+
+
+.check.bg-black:checked + .checktoggle {
+    background-color: #000000;
+}
+.checktoggle.bg-black {
+    background-color: #000000;
+}

@@ -1,0 +1,331 @@
+﻿@page "/holiday"
+@using System.Security.Claims;
+@inject HolidayController HolidayService
+
+
+
+<!-- /Page Wrapper -->
+@*<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Title</th>
+            <th>From Date</th>
+            <th>To Date</th>
+            <th>CountryId</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in holidays)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.Title</td>
+                <td>@item.HolidayDateFr.Date.ToShortDateString()</td>
+                <td>@item.HolidayDateTo.ToShortDateString()</td>
+                <td>@item.CountryId</td>
+
+            </tr>
+        }
+    </tbody>
+
+
+</table>*@
+<h3>Holiday</h3>
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+
+<DxGrid Data="holidays"  style="margin-top:10px; height: calc(100vh - 25vh)"
+        AllowSelectRowByClick="true"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        @* <DxGridDataColumn FieldName="Id" Caption="Id" MinWidth="50" /> *@
+        <DxGridDataColumn FieldName="ProjectCode" Caption="ProjectCode" MinWidth="300" />
+        <DxGridDataColumn FieldName="WBSCode" Caption="WBSCode" MinWidth="200" />
+        <DxGridDataColumn FieldName="CountryName" Caption="CountryName" MinWidth="50" />
+        <DxGridDataColumn FieldName="HolidayDateFr" Caption="From Date" MinWidth="100" />
+        <DxGridDataColumn FieldName="HolidayDateTo" Caption="To Date" MinWidth="100" />
+
+        <DxGridDataColumn FieldName="Title" Caption="Title" MinWidth="200" />
+        @* <DxGridDataColumn FieldName="CountryId" Caption="CountryId" />*@
+
+        <DxGridCommandColumn MinWidth="250">
+            <HeaderTemplate>
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                {
+                    <button class="btn btn-success" @onclick="@(()=>showHolidayAdd())">Add</button>
+                }
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                    {
+                        <DxButton Click="() => ShowHolidayUpdate(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+
+                    }
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                    {
+                        <DxButton Click="() =>DeleteHoliday(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                    }
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+</DxGrid>
+@code {
+    //[Parameter]
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+    private List<HolidayModel> holidays = new List<HolidayModel>();
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+
+    }
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    await GetFunctionByRole();
+
+                    await LoadData();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/holiday", true);
+                }
+            }
+        }
+    }
+    private async Task LoadData()
+    {
+        var holidayAll = await HolidayService.GetAll();
+        if (holidayAll.Success == true)
+        {
+            holidays = holidayAll.Data as List<HolidayModel>;
+            StateHasChanged();
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Holiday",
+              holidayAll.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "HOLIDAY";
+    string RoleName = "";
+    string Title = "Holiday";
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+    public async Task showHolidayAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(AddHoliday.Message), "");
+        var messageForm = Modal.Show<AddHoliday>("Add Holiday", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed == true)
+        {
+            var holidayAdd = result.Data as HolidayModel;
+            var resultUpdate = await HolidayService.Create(holidayAdd);
+            if (resultUpdate.Success == true)
+            {
+
+                await Swal.FireAsync(
+               "Create Holiday",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Holiday",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    private async Task ShowHolidayUpdate(object DataItem)
+    {
+        var wbs2 = DataItem as HolidayModel;
+        int id = wbs2.Id;
+        var parameters = new ModalParameters()
+            .Add(nameof(UpdateHoliday.holidayId), id);
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+
+        //var parameters = new ModalParameters()
+        //    .Add(nameof(UpdateCoutries.CountryId), id);
+        var messageForm = Modal.Show<UpdateHoliday>("Update Holiday", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var holiday = result.Data as HolidayModel;
+            var resultAdd = await HolidayService.Update(holiday);
+            if (resultAdd.Success == true)
+            {
+                await Swal.FireAsync(
+               "Update country",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadData();
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update Holiday",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+    }
+    protected async Task DeleteHoliday(object DataItem)
+    {
+        var wbs2 = DataItem as HolidayModel;
+        int id = wbs2.Id;
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of Holiday {wbs2.Id} data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await HolidayService.Delete(id);
+            if (resultDelete.Success == true)
+            {
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted Holiday",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+}

@@ -1,0 +1,291 @@
+﻿@page "/ContractHeaderUpdate" 
+@inject ProjectController projectService
+@inject ContractHeaderController contractService
+@inject UserController userService
+
+@*<h3>Update Contract-Project</h3>*@
+<EditForm Model="ContractH" OnValidSubmit="SaveData">
+    <div class="mb-3">
+        <label for="ProjectCode">Project Name</label>
+        <div class="">
+            <div class="">
+                <DxComboBox Data="@prjs" Id="cbb_PrjCode" ReadOnly="true"
+                            ListRenderMode="ListRenderMode.Virtual"
+                            FilteringMode="DataGridFilteringMode.Contains"
+                            TextFieldName="@nameof(ProjectModel.PrjName)"
+                            ValueFieldName="@nameof(ProjectModel.PrjCode)"
+                            @bind-Value="ContractH.ProjectCode"
+                            CssClass="cw-480" />
+            </div>
+        </div>
+    </div>
+    @*<div class="mb-3">
+        <label for="Name" style="enable-background = false">Contract Code</label>
+        <div>
+            <InputText class="form-control" @bind-Value="ContractH.ContractCode"></InputText>
+        </div>
+
+    </div> 
+    <div class="mb-3">
+        <label for="Name">Contract Name</label>
+        <div>
+            <InputText class="form-control" @bind-Value="ContractH.ContractName"></InputText>
+        </div>
+
+    </div>*@
+   @* <div class="mb-3">
+        <label for="Name">Description</label>
+        <div>
+            <InputText class="form-control" @bind-Value="@ContractH.Description"></InputText>
+        </div>
+
+    </div>*@
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                @*cal-icon*@
+                <div class="">
+                    <label for="Name">StartDate</label>
+                    <DxDateEdit @bind-Date="@ContractH.StartDate" PickerDisplayMode="DatePickerDisplayMode.Calendar" Enabled = "false" ReadOnly = "true"  CssClass="cw-320" style="font-size:large" />
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group form-focus" style="margin-left:7px">
+                @*cal-icon*@
+                <div class="">
+                    <label for="Name">EndDate</label>
+                    <DxDateEdit @bind-Date="@ContractH.EndDate" PickerDisplayMode="DatePickerDisplayMode.Calendar" Enabled="false" ReadOnly="false" CssClass="cw-320" style="font-size:large" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="margin-top:20px">
+        <label for="Name">Manday</label>
+        <div>
+            <InputNumber class="form-control" ReadOnly="false" @bind-Value="ContractH.Mandays"></InputNumber>
+        </div>
+    </div>
+    @*<div style="margin-top:5px">
+        <label for="Name">Manday Update</label>
+        <div>
+            <InputNumber class="form-control" @bind-Value="ContractH.MandaysUpdate"></InputNumber>
+        </div>
+    </div>*@
+    <div style="margin-top:5px">
+
+        <div class="mb-3">
+            <label for="Name">Approver</label>
+            <DxComboBox Data="@userL" Id="cbb_User" style="font-size:large"
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(UserModel.UserName)"
+                        ValueFieldName="@nameof(UserModel.UserName)"
+                        @bind-Value="ContractH.PM"
+       
+                        CssClass="cw-480" />
+        </div>
+    </div>
+   @* <div class="mb-3">
+        <label for="Name">Status</label>
+        <div>
+            <InputText class="form-control" @bind-Value="@ContractH.Status"></InputText>
+        </div>
+
+    </div>*@
+    @*<div class="row">
+        <div class="col-md-2"> <label>Active</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+    </div>*@
+    <div style="margin-top:10px;text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+    </div>
+</EditForm>
+@code {
+    public bool check { get; set; }  
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            ContractH.Status = "A";
+        }
+        else
+        {
+            ContractH.Status = "I";
+
+        }
+    }
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    private List<UserModel> userL = new List<UserModel>();
+
+    private DateTime overrideStart = DateTime.Today;
+    private DateTime overrideEnd = DateTime.Today;
+
+    void OnDateChanged(DateTime newValue)
+    {
+        overrideStart = newValue;
+    }
+    void OnDateChangedEnd(DateTime newValueEnd)
+    {
+        overrideEnd = newValueEnd;
+    }
+
+    //protected WBSHeaderModel wbs = new();
+    [Parameter] public string ContractCodeID { get; set; } = "";
+    private List<ProjectModel> prjs = new List<ProjectModel>();
+    [Parameter] public string projectCode { get; set; }
+
+    private ContractHeaderModel ContractH = new ContractHeaderModel()
+        {
+
+            StartDate = DateTime.Now,
+            EndDate = DateTime.Now
+        };
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        LoadProject();
+        LoadUser();
+        var authState = await authenticationState;
+        LoadContract(authState.User.Identity.Name, ContractCodeID);
+
+        ContractH.ModifiedBy = authState.User.Identity.Name; //        ContractH.UserCode
+
+
+    }
+    public async void LoadUser()
+    {
+
+        var dataUser = userService.GetAllUser_List(string.Empty );
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data User",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    public async void LoadProject()
+    {
+        
+        var authState = await authenticationState;
+        string Username = authState.User.Identity.Name;
+
+        var dataPrj = projectService.sp_projectlist_byUser(Username);
+
+        if (dataPrj.Result.Success == true)
+        {
+            prjs = dataPrj.Result.Data as List<ProjectModel>;
+            var prj = prjs.Where(x => x.PrjCode == projectCode);
+            //if (prj.Any())
+            //{
+            //    ContractH.PrjName = prj.FirstOrDefault().PrjName;
+
+            //}
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data Project",
+             dataPrj.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    public async void LoadContract(string UserCode, string ContractCode)
+    {
+        var dataContract = contractService.GetContractHeader3ByID(UserCode, ContractCode );
+
+
+        if (dataContract.Result.Success == true)
+        {
+            ContractH = dataContract.Result.Data as ContractHeaderModel;
+            //ContractH.Status = check.ToString();
+            if(ContractH.Status == "A")
+            {
+                check = true;
+            }
+            else
+            {
+                check = false;
+            }
+            //ContractH = ContractHs.FirstOrDefault();
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data GetContractHeader",
+             dataContract.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    protected async Task SaveData()
+    {
+        try
+        {
+            var prj = prjs.Where(x => x.PrjCode == ContractH.ProjectCode);
+            if (prj.Any())
+            {
+                ContractH.ProjectCodeOnly = prj.FirstOrDefault().ProjectCodeOnly;
+            }
+        }
+        catch (Exception ex) { }
+        //var authState = await authenticationState; 
+        //var resultAdd = await contractService.Update(ContractH, authState.User.Identity.Name);
+        //if (resultAdd.Success == true)
+        //{
+        //    SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+        //        {
+        //            Title = "Create Contract-Project",
+        //            Text = $"Create Contract Successfully Completed",
+        //            Icon = SweetAlertIcon.Success,
+        //            ShowCancelButton = false,
+        //            ConfirmButtonText = $"OK",
+        //            CancelButtonText = "No"
+        //        });
+        //    if (!string.IsNullOrEmpty(result.Value))
+        //    {
+        //        URLHelper.NavigateTo("/ContractHeader", true);
+        //    }
+
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Create ContractHeader",
+        //      resultAdd.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+        await BlazoredModal.CloseAsync(ModalResult.Ok(ContractH));
+
+    }
+
+
+    private void CancelAdd()
+    {
+        //URLHelper.NavigateTo("/ContractHeader");
+
+        BlazoredModal.CancelAsync();
+    }
+}

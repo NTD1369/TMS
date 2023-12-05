@@ -1,0 +1,300 @@
+﻿@page "/RPT_TimeEntrySummary"
+@inject ApprovalTimeSheetSummaryController rpt_approvalTimeSheetService
+@using System.Security.Claims;
+@using DevExpress.Data.Filtering;
+<h3>TimeEntry Summary</h3>
+<div class="row">
+    <div class="col-md-2" >
+        <div class="form-group">
+            <label>From</label>
+            <DxDateEdit Date="overrideFromDate" DateExpression="@(() => overrideFromDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "FromDate"))" CssClass="cw-320" />
+
+        </div>
+    </div>
+    <div class="col-md-2" style="display:flex">
+        <div class="form-group">
+            <label>To</label>
+            <DxDateEdit Date="overrideToDate" DateExpression="@(() => overrideToDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "ToDate"))" CssClass="cw-320" />
+
+        </div>
+    </div>
+
+    <div class="col-md-4" style="margin-top:32px">
+        <button class="btn btn-primary" @onclick="@(()=>LoadData())">Filter</button>
+ 
+    </div>
+    <div class="col-md-4" style="margin-top:32px;text-align:right">
+        <DxButton class="btn btn-success" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+    </div>
+
+</div> 
+
+@*<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Country</th>
+            <th>Team</th>
+            <th>Consultant Name</th> 
+            <th>User Type</th>
+            <th>Hours UnSubmitted</th>
+            <th>Hours Missing</th>
+            <th>Hours Pending</th>
+            <th>Hours Approved</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in approvals)
+        {
+            <tr>
+                <td>@item.Country</td>
+                <td>@item.Department</td>
+                <td>@item.UserCode</td>
+                <td>@item.ResourcesType</td>
+                <td>@item.UnSumitted</td>
+                <td>@item.HoursMissing</td>
+                <td>@item.HoursPending</td>
+                <td>@item.HoursApproved</td>
+                <td>@item.Total</td>
+            </tr>
+            
+        }
+    </tbody>
+   
+</table>*@
+<DxGrid @ref="Grid" Data="approvals" ShowSearchBox="false" style="height: calc(100vh - 30vh)"
+        SelectionMode="GridSelectionMode.Single"
+        ShowFilterRow="true"
+        AllowSelectRowByClick="true">
+    <Columns>
+        <DxGridDataColumn FieldName="FullName" Caption="Consultant Name" MinWidth="150" />
+        <DxGridDataColumn FieldName="Department" Caption="Team" MinWidth="100" />
+        <DxGridDataColumn FieldName="ResourcesType" Caption="User Type" MinWidth="100" />
+
+        <DxGridDataColumn FieldName="Country" Caption="Country" MinWidth="100" />
+        @*<DxGridDataColumn FieldName="UnSumitted" Caption="Hours UnSubmitted" MinWidth="100" />*@
+        <DxGridDataColumn FieldName="UnSumitted" MinWidth="135" Width="10%">
+            <FilterRowCellTemplate>
+                <DxComboBox @bind-Value="context.FilterCriteria" DisplayFormat="#,##0.##"
+                            Data="hoursUnSubmited" ValueFieldName="Criteria" TextFieldName="DisplayText"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="HoursMissing" MinWidth="135" Width="10%">
+            <FilterRowCellTemplate>
+                <DxComboBox @bind-Value="context.FilterCriteria" DisplayFormat="#,##0.##"
+                            Data="hoursMissing" ValueFieldName="Criteria" TextFieldName="DisplayText"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="HoursPending" MinWidth="135" Width="10%">
+            <FilterRowCellTemplate>
+                <DxComboBox @bind-Value="context.FilterCriteria" DisplayFormat="#,##0.##"
+                            Data="hoursPedding" ValueFieldName="Criteria" TextFieldName="DisplayText"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        @*<DxGridDataColumn FieldName="HoursApproved" Caption="HoursApproved" MinWidth="100" />*@
+        <DxGridDataColumn FieldName="HoursApproved" MinWidth="135" Width="10%">
+            <FilterRowCellTemplate>
+                <DxComboBox @bind-Value="context.FilterCriteria" DisplayFormat="#,##0.##"
+                            Data="hoursApproved" ValueFieldName="Criteria" TextFieldName="DisplayText"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="Total" Caption="Total" />
+
+    </Columns>
+</DxGrid>
+@code {
+    static readonly IReadOnlyList<HoursUnSubmitedFilter> hoursUnSubmited = new HoursUnSubmitedFilter[] {
+        new("[UnSumitted]>0","Hour UnSumitted > 0")
+
+    };
+    record HoursUnSubmitedFilter(CriteriaOperator Criteria, string DisplayText)
+    {
+        public HoursUnSubmitedFilter(string CriteriaText, string DisplayText)
+            : this(CriteriaOperator.Parse(CriteriaText), DisplayText)
+        {
+        }
+    }
+   
+    static readonly IReadOnlyList<HoursMissingFilter> hoursMissing = new HoursMissingFilter[] {
+        new("[HoursMissing]>0","Hour Missing > 0")
+
+    };
+    record HoursMissingFilter(CriteriaOperator Criteria, string DisplayText)
+    {
+        public HoursMissingFilter(string CriteriaText, string DisplayText)
+            : this(CriteriaOperator.Parse(CriteriaText), DisplayText)
+        {
+        }
+    }
+
+
+    static readonly IReadOnlyList<HourPendingFilter> hoursPedding = new HourPendingFilter[] {
+        new("[HoursPending]>0","Hour Pending > 0")
+
+    };
+    record HourPendingFilter(CriteriaOperator Criteria, string DisplayText)
+    {
+        public HourPendingFilter(string CriteriaText, string DisplayText)
+            : this(CriteriaOperator.Parse(CriteriaText), DisplayText)
+        {
+        }
+    }
+
+    static readonly IReadOnlyList<HourApprovedFilter> hoursApproved = new HourApprovedFilter[] {
+        new("[HoursApproved]>0","Hour Approved > 0")
+
+    };
+    record HourApprovedFilter(CriteriaOperator Criteria, string DisplayText)
+    {
+        public HourApprovedFilter(string CriteriaText, string DisplayText)
+            : this(CriteriaOperator.Parse(CriteriaText), DisplayText)
+        {
+        }
+    }
+
+
+
+
+    string Function = "TIMEENTRYSUMMARYREPORT";
+    string RoleName = "";
+    string Title = "TIMEENTRYSUMMARYREPORT";
+    List<RolePermission> permissionList = new List<RolePermission>();
+
+    IGrid Grid { get; set; }
+
+    private DateTime overrideFromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);     //DateTime.Today;
+    private DateTime overrideToDate = DateTime.Today;
+    void OnDateChanged(DateTime newValue, string ObjType)
+    {
+        if (ObjType == "FromDate") { overrideFromDate = newValue; }
+        if (ObjType == "ToDate") { overrideToDate = newValue; } 
+    }
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private List<RPT_TimeEntrySummaryModel> approvals = new List<RPT_TimeEntrySummaryModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        //var authState = await authenticationState;
+
+        //await LoadData();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+
+                    //lấy quyền
+                    await GetFunctionByRole();
+                    await LoadData();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+            }
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+    private async Task LoadData()
+    {
+        //DateTime fromDate = new DateTime(2023, 04, 01);
+        //DateTime toDate = new DateTime(2023, 04, 30);
+        var authState = await authenticationState;
+        string Username = authState.User.Identity.Name;
+
+        var itemApproval = await rpt_approvalTimeSheetService.RPT_TimeEntrySummary(overrideFromDate,overrideToDate, Username );
+        if (itemApproval.Success == true)
+        {
+            approvals = itemApproval.Data as List<RPT_TimeEntrySummaryModel>;
+            StateHasChanged();
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data rpt_approvalTimeSheet",
+              itemApproval.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    async Task ExportXlsx_Click()
+    {
+        await Grid.ExportToXlsxAsync("TimeEntrySummary Report " + DateTime.Now.ToString("yyyyMMdd"), new GridXlExportOptions()
+        {
+            //ExportSelectedRowsOnly = ExportSelectedRowsOnly,
+            //CustomizeCell = OnCustomizeCell
+        });
+    }
+
+}

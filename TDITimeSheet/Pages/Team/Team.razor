@@ -1,0 +1,436 @@
+﻿@page "/team"
+@inject TeamMemberController teamMemberService
+
+@inject TeamController teamService
+@using System.Security.Claims;
+
+
+<h3>Team</h3>
+@*kiểm tra button có insert không*@
+@*@if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+{
+    <button class="btn btn-success" @onclick="@(()=>showCountryAdd())">Add</button>
+}*@
+
+
+@*<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Leader</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in teamL)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.Name</td>
+                <td>@item.Leader</td>
+                <td>@item.Status</td>
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                {
+                    <td><button type="button" @onclick="(async ()=> await NavigaToTeam(item.Id.ToString()))" class="btn btn-success">Assign</button></td>
+                }
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                {
+                    <td><button type="button" @onclick="(async ()=> await ShowUpdateCountry(item.Id))" class="btn btn-info">Edit</button></td>
+                }
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                {
+                    <td><button type="button" @onclick="(async () => await DeleteCountry(item.Id))" class="btn btn-danger">Delete</button></td>
+                }
+
+            </tr>
+        }
+    </tbody>
+
+
+</table>*@
+
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+
+<DxGrid Data="teamL" style="margin-top:10px; height: calc(100vh - 26vh)"
+        AllowSelectRowByClick="true"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        @*<DxGridDataColumn FieldName="Id" Caption="Id" />*@
+        <DxGridDataColumn FieldName="Name" Caption="Name" />
+        <DxGridDataColumn FieldName="FullName" Caption="Leader" />
+        <DxGridDataColumn FieldName="Status" Caption="Status">
+            <CellDisplayTemplate>
+                @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.Active)
+                {
+                    <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.Active)</span>
+                }
+                else
+                {
+                    <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.InActive)</span>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridCommandColumn MinWidth="350">
+            <HeaderTemplate>
+
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                {
+                    <button class="btn btn-success" @onclick="@(()=>showCountryAdd())">Add</button>
+                }
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    //@if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                    //{
+
+                    //}
+                    <DxButton Click="() => NavigaToTeam(context.DataItem)" Text="Detail" RenderStyle="ButtonRenderStyle.Info" />
+
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                    {
+                        <DxButton Click="() => ShowUpdateCountry(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+
+                    }
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                    {
+                        <DxButton Click="() =>DeleteCountry(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+
+                    }
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+</DxGrid>
+
+
+@code {
+    //[Parameter]
+    //public string IdTest { get; set; }
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    protected async Task DeleteCountry(object DataItem)
+    {
+
+        var wbs2 = DataItem as TeamModel;
+        int id = wbs2.Id;
+        teamId = wbs2.Id;
+        await LoadData();
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Do you want to delete Team {wbs2.Name}?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (teamMemberL.Count <= 0)
+        {
+            if (!string.IsNullOrEmpty(result.Value))
+            {
+
+                var resultDelete = await teamService.Delete(id);
+                if (resultDelete.Success == true)
+                {
+                    await LoadDataTeam();
+                    await LoadData();
+                }
+                else
+                {
+                    await Swal.FireAsync(
+                      "Deleted Team",
+                      resultDelete.Message,
+                      SweetAlertIcon.Error
+                      );
+                }
+            }
+            else if (result.Dismiss == DismissReason.Cancel)
+            {
+                //await Swal.FireAsync(
+                //  "Cancelled",
+                //  "Your imaginary file is safe :)",
+                //  SweetAlertIcon.Error
+                //  );
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Cancelled",
+              "Can't delete the group because there are members in the team",
+              SweetAlertIcon.Error
+              );
+        }
+
+    }
+
+    protected async Task NavigaToUpdateCountry(int id)
+    {
+        URLHelper.NavigateTo("/teamUpdate/" + id);
+    }
+
+
+
+
+    private List<TeamModel> teamL = new List<TeamModel>();
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "TEAM";
+    string RoleName = "";
+    string Title = "Team";
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+    private List<TeamMemberModel> teamMemberL = new List<TeamMemberModel>();
+    [Parameter] public int teamId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        //await LoadData();
+
+
+    }
+    private async Task LoadData()
+    {
+        var dataTeamMember = await teamMemberService.GetTeamMemberById(teamId);
+        if (dataTeamMember.Success == true)
+        {
+            teamMemberL = dataTeamMember.Data as List<TeamMemberModel>;
+            StateHasChanged();
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Team Member",
+              dataTeamMember.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    //lấy quyền
+                    await GetFunctionByRole();
+
+                    await LoadDataTeam();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/team", true);
+                }
+            }
+        }
+    }
+    public async Task LoadDataTeam()
+    {
+        var team = await teamService.GetAllTeams();
+        if (team.Success == true)
+        {
+            teamL = team.Data as List<TeamModel>;
+            StateHasChanged();
+            //foreach (var item in teamL)
+            //{
+            //    if(item.Status == "A")
+            //    {
+            //        item.Status = "Active";
+            //    }
+            //    else
+            //    {
+            //        item.Status = "InActive";
+            //    }
+            //}
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Team",
+              team.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+
+
+    private async Task ShowUpdateCountry(object DataItem)
+    {
+        var wbs2 = DataItem as TeamModel;
+        int id = wbs2.Id;
+        var parameters = new ModalParameters()
+            .Add(nameof(TeamUpdate.teamId), id);
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+        //var parameters = new ModalParameters()
+        //    .Add(nameof(TeamUpdate.teamId), id);
+        var messageForm = Modal.Show<TeamUpdate>("Update Team", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var country = result.Data as TeamModel;
+            var resultAdd = await teamService.Update(country);
+            if (resultAdd.Success == true)
+            {
+                await Swal.FireAsync(
+               "Update Team",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadDataTeam();
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update Team",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+    }
+    public async Task showCountryAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(TeamAdd.Message), "");
+        var messageForm = Modal.Show<TeamAdd>("Add New Team", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed == true)
+        {
+            var teamAdd = result.Data as TeamModel;
+            var resultUpdate = await teamService.Create(teamAdd);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Create Team",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadDataTeam();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Team",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    protected async Task NavigaToTeam(object id)
+    {
+        //URLHelper.NavigateTo("/team/" + teamId);
+        var wbs2 = id as TeamModel; // ContractLineModel;
+        URLHelper.NavigateTo("/team/" + wbs2.Id);
+    }
+}

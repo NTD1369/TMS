@@ -1,0 +1,495 @@
+﻿@page "/ApprovalTimeEntry"
+@inject ApprovalTimeSheetSummaryController rpt_approvalTimeSheetService
+@inject UserController userService
+@using System.Security.Claims;
+
+
+
+<h3>TimeEntry For PM Approval By Period</h3>
+<div class="row">
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>From</label>
+            <DxDateEdit Date="overrideFromDate" DateExpression="@(() => overrideFromDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "FromDate"))" CssClass="cw-320" />
+
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>To</label>
+            <DxDateEdit Date="overrideToDate" DateExpression="@(() => overrideToDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "ToDate"))" CssClass="cw-320" />
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>Status</label>
+            <DxComboBox Data="@StatusLs" @bind-Value="@StatusId"></DxComboBox>
+        </div>
+    </div>
+   @* <div class="col-md-2">
+        <div class="form-group">
+            <label>Consultant</label>
+            <DxComboBox Data="@userL" Id="cbb_User"
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(UserModel.UserName)"
+                        ValueFieldName="@nameof(UserModel.UserName)"
+                        @bind-Value="EmployeeId"
+                        @bind-Text="EmployeeId" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                        CssClass="cw-480" />
+        </div>
+    </div>*@
+    <div class="col-md-2">
+        <div class="form-group">
+            <label>Consultant</label>
+            <DxComboBox Data="@userL" Id="cbb_User"
+                        ListRenderMode="ListRenderMode.Virtual"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        TextFieldName="@nameof(UserModel.UserCode)"
+                        ValueFieldName="@nameof(UserModel.UserCode)"
+                        @bind-Value="EmployeeId"
+                        @bind-Text="EmployeeId" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                        CssClass="cw-480" />
+        </div>
+    </div>
+    <div class="col-md-1" style="margin-top:32px">
+        <button class="btn btn-primary" @onclick="@(()=>LoadData())">Filter</button>
+    </div>
+
+</div>
+<div class="row">
+    @*kiểm tra button có insert không*@
+   @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+    {
+        <div class="col-md-10"/>
+        <div class="col-md-1" style="text-align:right">
+            <button class="btn btn-success" @onclick="@(()=>ApprovalData())">Approve </button>
+        </div>
+
+        <div class="col-md-1">
+            <button class="btn btn-danger" @onclick="@(()=>RejectData())">Reject </button>
+        </div>
+    }
+
+
+</div>
+
+
+<DxGrid Data="@DataSource" ShowFilterRow="true" style="margin-top:10px;height: calc(100vh - 34vh)" PageSize="1000"
+        KeyFieldName="IDS"
+        @bind-SelectedDataItems="@SelectedDataItems"
+        ShowSearchBox="true"
+        AllowSelectRowByClick="true">
+    <Columns>
+        <DxGridSelectionColumn />
+        <DxGridDataColumn FieldName="IDS" Caption="IDS" Visible="false">
+            @* <DxTextBox @bind-Text="@ids" />*@
+        </DxGridDataColumn>
+
+        @*<CellDisplayTemplate> *@
+        @*<DxCheckBox Checked="@((bool)context.Value)" Enabled="false" /> *@
+        @*<DxCheckBox Checked="@check"
+        CheckedExpression="@(() => check)"
+        CheckedChanged="@((bool value) => CheckedChanged(value))">
+
+        @{
+        ApprovalTimesheetEntryModel result_Change = DataSource.Where(x => x.IDs == ids).FirstOrDefault();
+
+        }
+        </DxCheckBox>*@
+
+        <DxGridDataColumn FieldName="StatusName" MinWidth="30" Caption="Status" />
+        @*<DxComboBox Data="@approvals"
+        TextFieldName="@nameof(approvals.Name)"
+        ValueFieldName="@nameof(CountryModel.Id)"
+        CssClass="cw-480"
+        @bind-Value="@leave.LeaveTypeId" />*@
+
+        @*<CellEditTemplate>
+        @{
+        var employee = (approvals)Status.EditModel;
+        }
+        <DxTextBox @bind-Text="@employee.FirstName"></DxTextBox>
+        </CellEditTemplate>*@
+        <DxGridDataColumn FieldName="UserCode" Caption="Consultant" Width="10%" MinWidth="50" TextAlignment="GridTextAlignment.Center" />
+        <DxGridDataColumn FieldName="PrjName" Caption="Project" Width="30%" MinWidth="100" TextAlignment="GridTextAlignment.Center" />
+        <DxGridDataColumn FieldName="LineCode" Caption="WBS" Width="10%" MinWidth="100" TextAlignment="GridTextAlignment.Center" />
+        <DxGridDataColumn FieldName="Date" MinWidth="80" />
+        <DxGridDataColumn FieldName="Hour" MinWidth="50" />
+        <DxGridDataColumn FieldName="Comments" Width="10%" />
+        <DxGridDataColumn FieldName="Description" Width="10%" />
+        @*<DxGridDataColumn FieldName="ProjectCode" Width="10%" MinWidth="50" TextAlignment="GridTextAlignment.Center" Caption="ProjectCode" /> *@
+
+    </Columns>
+</DxGrid>
+<br />
+@*<div>
+    <b>Selected Rows:</b>
+    @foreach (var product in SelectedDataItems.Cast<ApprovalTimesheetEntryModel>())
+    {
+        <li>@product.IDS</li>
+    }
+</div>*@
+
+
+@code {
+
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "APPROVETIMESHEET";
+    string RoleName = "";
+    string Title = "APPROVETIMESHEET";
+    public string Username { get; set; }
+
+    public bool check { get; set; }
+
+    void CheckedChanged(bool value)
+    {
+        //ApprovalTimesheetEntryModel result_Change = DataSource.Where(x => x.IDs == ids).FirstOrDefault();
+
+        //check = value;
+        //if (check == true)
+        //{
+        //    result_Change.CheckBox1 = "1";
+        //}
+        //else
+        //{
+        //    result_Change.CheckBox1 = "0";
+
+        //}
+    }
+
+    //add new =0 = reject, submit (pending ) = 1, approval =2
+    private DateTime overrideFromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);     //DateTime.Today;
+    private DateTime overrideToDate = DateTime.Today;
+
+    private List<UserModel> userL = new List<UserModel>();
+    private string EmployeeId = "";
+
+    IEnumerable<ApprovalTimesheetEntryModel> DataSource { get; set; }
+
+    IReadOnlyList<object> SelectedDataItems { get; set; }
+
+    private string StatusId = "ALL";
+    IEnumerable<string> StatusLs = new List<string>() {
+    "ALL",
+    "Pending",
+    "Approved",
+   
+  };
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    LoadUser();
+                    await LoadData();
+
+                    //lấy quyền
+                    await GetFunctionByRole();
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+            }
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+
+    void OnDateChanged(DateTime newValue, string ObjType)
+    {
+        if (ObjType == "FromDate") { overrideFromDate = newValue; }
+        if (ObjType == "ToDate") { overrideToDate = newValue; }
+
+    }
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+    //private List<ApprovalTimesheetEntryModel> approvals = new List<ApprovalTimesheetEntryModel>();
+
+    private async Task LoadData()
+    {
+        //DateTime fromDate = new DateTime(2023, 04, 01);
+        //DateTime toDate = new DateTime(2023, 04, 30);
+        var authState = await authenticationState;
+        string Username = authState.User.Identity.Name;
+
+        int iStatus = 0;
+        if (StatusId == "Unsubmitted") { iStatus = 0; } //moi submit
+        if (StatusId == "Pending") { iStatus = 1; } //moi submit
+        if (StatusId == "Approved") { iStatus = 2; } //da approval
+        if (StatusId == "ALL") { iStatus = -1; }     //co the lay theo yeu cau
+
+        var itemApproval = await rpt_approvalTimeSheetService.Pending4ApprovalTimeEntry(overrideFromDate, overrideToDate, Username, EmployeeId, iStatus, false);
+        if (itemApproval.Success == true)
+        {
+            //approvals = itemApproval.Data as List<ApprovalTimesheetEntryModel>;
+            if (itemApproval.Data is List<ApprovalTimesheetEntryModel> aApprovals)
+            {
+                DataSource = aApprovals;
+
+
+                SelectedDataItems = DataSource.Where(x => x.IDS == -1).ToList(); // .Skip(1).Take(2).ToList();
+            }
+            StateHasChanged();
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data rpt_approvalTimeSheet",
+              itemApproval.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    //public async void LoadUser()
+    //{
+
+    //    var dataUser = userService.GetAllUser_List(string.Empty);
+    //    if (dataUser.Result.Success == true)
+    //    {
+    //        userL = dataUser.Result.Data as List<UserModel>;
+    //    }
+    //    else
+    //    {
+    //        await Swal.FireAsync(
+    //         "Load Data User",
+    //         dataUser.Result.Message,
+    //         SweetAlertIcon.Error
+    //         );
+    //    }
+    //} 
+    public async void LoadUser()
+    {
+
+        var dataUser = userService.GetListUsersPM(Username);
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data User",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+    private async Task ApprovalData()
+    {
+        if (SelectedDataItems.Count <= 0)
+        {
+            await Swal.FireAsync(
+             "Error",
+            "Please select timesheet lines !",
+             SweetAlertIcon.Error
+             );
+            return;
+        }
+        var authState = await authenticationState;
+        string Username = authState.User.Identity.Name;
+
+        if (SelectedDataItems == null) { return; }
+
+        foreach (var items in SelectedDataItems.Cast<ApprovalTimesheetEntryModel>()) //SelectedDataItems
+        {
+            var itemApproval = await rpt_approvalTimeSheetService.ApprovalTimeEntryByID(items.IDS);
+            if (itemApproval.Success == true)
+            {
+                //approvals = itemApproval.Data as List<ApprovalTimesheetEntryModel>;
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Load Data pt_approvalTimeSheet",
+                  itemApproval.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+
+        }
+
+        await Swal.FireAsync("Approval Success", "OK", SweetAlertIcon.Success); //chay hoi lau nen cho view truoc
+        LoadData();
+    }
+
+    private async Task RejectData()
+    {
+        if (SelectedDataItems.Count <= 0)
+        {
+            await Swal.FireAsync(
+             "Error",
+            "Please select timesheet lines !",
+             SweetAlertIcon.Error
+             );
+            return;
+        }
+        if (SelectedDataItems == null) { return; }
+        var parameters = new ModalParameters()
+            .Add(nameof(ApprovalTimeEntry_RejectRemarks.Remarks), "");
+        var messageForm = Modal.Show<ApprovalTimeEntry_RejectRemarks>("Reject Remarks", parameters);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed == true)
+        {
+            var Remarks = result.Data as string;
+            if (Remarks == "......") { return; }
+            //di xu ly reject
+            var authState = await authenticationState;
+            string Username = authState.User.Identity.Name;
+
+            if (SelectedDataItems == null) { return; }
+
+            foreach (var items in SelectedDataItems.Cast<ApprovalTimesheetEntryModel>()) //SelectedDataItems
+            {
+                var itemApproval = await rpt_approvalTimeSheetService.RejectTimeEntryByID(items.IDS, Remarks);
+                if (itemApproval.Success == true)
+                {
+                    //approvals = itemApproval.Data as List<ApprovalTimesheetEntryModel>;
+
+                }
+                else
+                {
+                    await Swal.FireAsync(
+                      "LoadData",
+                      itemApproval.Message,
+                      SweetAlertIcon.Error
+                      );
+                }
+
+            }
+
+            await Swal.FireAsync("Reject Success", "OK", SweetAlertIcon.Success); //chay hoi lau nen cho view truoc
+            LoadData();
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+
+    }
+    //public string ids { get; set; }
+
+
+    //async Task UsePopupEditForm_CheckedChanged(string value)
+    //{
+    //    ids = value;
+    //    await Grid.CancelEditAsync();
+    //}
+
+    //void Grid_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    //{
+    //    if (e.IsNew)
+    //    {
+    //        var newEmployee = (ApprovalTimesheetEntryModel)e.EditModel;
+    //        newEmployee.IDs = "1";
+    //        newEmployee.CheckBox1 = "1";
+    //    }
+    //}
+
+    //void Grid_CustomizeElement(GridCustomizeElementEventArgs e) {
+
+    //    //if(e.ElementType != GridElementType.DataCell)
+    //    //    return;
+    //    //var stockQuoteModel = (ApprovalTimesheetEntryModel)e.Grid.GetDataItem(e.VisibleIndex);
+    //    //var fieldName = ((IGridDataColumn)e.Column).FieldName;
+    //    ////if (stockQuoteModel.IDs != "" && fieldName == "IDs" && e.Grid.sel = ) {
+    //    ////    ids = stockQuoteModel.IDs;
+
+
+        //    ////}
+
+
+
+    //}
+    //private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    //{
+    //    if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+    //    {
+    //        e.CssClass = "alt-item";
+    //    }
+    //    if (e.ElementType == GridElementType.HeaderCell)
+    //    {
+    //        e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+    //        e.CssClass = "header-bold";
+    //    }
+    //}
+
+}

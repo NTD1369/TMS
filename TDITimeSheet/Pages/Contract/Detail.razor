@@ -1,0 +1,966 @@
+﻿@page "/contractHeader/{contractCode}"
+@inject ContractHeaderController WBheaderService
+@inject ContractLineController lineService
+@inject UserController userService
+@inject ContractAssignMemberController contractAssignService
+@inject ContractLineController contractLineService
+@using TDITimeSheet.Pages.ContractAssignMember;
+@using TDITimeSheet.Pages.ContractLine;
+@using System.Security.Claims;
+
+
+@if(header!= null)
+{
+    @*<h3>Detail</h3> *@
+    <table class="table" style="margin-top:10px">
+        <thead>
+            <tr>
+                <th>Project Code</th>
+                @*<th>ContractCode</th>*@
+                <th>Name</th>
+                @* <th>Description</th>*@
+                @* <th>Remark</th>*@
+                <th>StartDate</th>
+                <th>EndDate</th>
+                <th>Mandays</th>
+                <th>MandaysUsed	</th>
+                <th>MandaysRemain</th>
+                @*<th>MandaysUpdate</th>*@
+                <th>Project Manager</th>
+                @*<th>Status</th>*@
+
+            </tr>
+        </thead>
+
+        <tbody>
+
+            <tr>
+                <th>@header.ProjectCode</th>
+
+                @*<td>@item.ContractCode</td>*@
+                <th>@header.ContractName</th>
+                @*<td>@item.Description</td>*@
+                @*<td>@item.Remark</td>*@
+                <td>@header.StartDate.ToString("MM-dd-yyyy")</td>
+                <td>@header.EndDate.ToString("MM-dd-yyyy")</td>
+                <td>@header.Mandays</td>
+                <td>@header.MandaysUsed</td>
+                <td>@header.MandaysRemain</td>
+                @*<td>@item.MandaysUpdate</td>*@
+                <td>@header.PM</td>
+
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="row">
+        <div class="">
+            @*<div class="card">
+        <div class="card-body">
+        <div class="project-title">
+        <h5 class="card-title">Project Name</h5>
+        <p for="Name">@header.ContractName</p>
+        </div>
+        </div>
+        <div class="project-title">
+        <h5 class="card-title">Mandays</h5>
+        <p for="Name">@header.Mandays</p>
+        </div>
+        </div>*@
+            @*<DxGrid Data="@header">
+        <Columns>
+        <DxGridDataColumn FieldName="ContractName" MinWidth="200" Caption="Project Name" />
+        </Columns>
+        </DxGrid>*@
+
+            <DxGrid Data="lines" ShowSearchBox="true"
+                SelectedDataItemChanged="OnSelectedDataItemChanged"
+                KeyFieldName="ContractLineId"
+                SelectionMode="GridSelectionMode.Single"
+                AllowSelectRowByClick="true">
+                <Columns>
+                    <DxGridSelectionColumn />
+                    <DxGridDataColumn FieldName="LineCode" Caption="WBS" />
+                    @*<DxGridDataColumn FieldName="Description" Caption="Description" />*@
+                    <DxGridDataColumn FieldName="StartDate" MinWidth="100" Caption="StartDate" />
+                    <DxGridDataColumn FieldName="EndDate" MinWidth="100" Caption="EndDate" />
+                    <DxGridDataColumn FieldName="Mandays" MinWidth="100" Caption="Mandays" />
+                    <DxGridDataColumn FieldName="MandaysUsed" MinWidth="100" Caption="MandaysUsed" />
+                    <DxGridDataColumn FieldName="MandaysRemain" MinWidth="100" Caption="MandaysRemain" />
+                    @* <DxGridDataColumn FieldName="Bill" Caption="Bill" />
+                <DxGridDataColumn FieldName="Status" Caption="Status" />
+                <DxGridDataColumn FieldName="Additional" Caption="Additional" />*@
+
+
+                    <DxGridDataColumn FieldName="Bill" Caption="Bill">
+                        <CellDisplayTemplate>
+                            @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.Yes)
+                            {
+                                <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.Yes)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.No)</span>
+                            }
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+
+
+                    <DxGridDataColumn FieldName="Status" Caption="Status">
+                        <CellDisplayTemplate>
+                            @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.Active)
+                            {
+                                <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.Active)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.InActive)</span>
+                            }
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+
+
+                    <DxGridDataColumn FieldName="Additional" Caption="Additional">
+                        <CellDisplayTemplate>
+                            @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.Yes)
+                            {
+                                <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.Yes)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.No)</span>
+                            }
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridCommandColumn Width="140px">
+                        <HeaderTemplate>
+                            @*kiểm tra button có insert không*@
+                            @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, detailPermissionList))
+                            {
+                                <DxButton Click="() => showContractLineAdd()" Text="New" RenderStyle="ButtonRenderStyle.Info" />
+                            }
+
+
+                        </HeaderTemplate>
+                        <CellDisplayTemplate>
+                            @{
+                                @*kiểm tra button có insert không*@
+                                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, detailPermissionList))
+                                {
+                                    <DxButton Click="() => ShowContractLineEdit(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                                }
+                                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, detailPermissionList))
+                                {
+                                    <DxButton Click="() =>ShowContractLineDelete(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                                }
+
+                            }
+                        </CellDisplayTemplate>
+                    </DxGridCommandColumn>
+                </Columns>
+            </DxGrid>
+
+            @*<DxTextBox @bind-Text="@SelectedDataItem.Description" />*@
+            <div class="project-title">
+                <h5 class="card-title">WBS Assign Employee</h5>
+            </div>
+            <DxGrid @ref="Grid"
+                Data="@contractAssignL"
+                KeyFieldName="LineId"
+                EditModelSaving="Grid_EditModelSaving"
+                EditMode="GridEditMode.EditForm"
+                ShowSearchBox="true">
+                <Columns>
+
+                    <DxGridDataColumn FieldName="EmployeeId" MinWidth="200" Caption="Employee" />
+                    <DxGridDataColumn FieldName="FullName" MinWidth="200" Caption="FullName" />
+                    <DxGridDataColumn FieldName="StartDate" Caption="StartDate" MinWidth="100" TextAlignment="GridTextAlignment.Center" />
+                    <DxGridDataColumn FieldName="EndDate" Caption="EndDate" MinWidth="100" TextAlignment="GridTextAlignment.Center" />
+                    @*<DxGridDataColumn FieldName="Mandays" MinWidth="100" />*@
+                    @*<DxGridDataColumn FieldName="Description" Width="40%" MinWidth="50" TextAlignment="GridTextAlignment.Center" />*@
+
+                    <DxGridCommandColumn Width="140px">
+                        <HeaderTemplate>
+                            @*kiểm tra button có insert không*@
+                            @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, detailPermissionList))
+                            {
+                                <DxButton Click="() => showContractAsingAdd()" Text="New" RenderStyle="ButtonRenderStyle.Info" />
+                            }
+
+                        </HeaderTemplate>
+                        <CellDisplayTemplate>
+                            @{
+                                @*kiểm tra button có insert không*@
+                                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, detailPermissionList))
+                                {
+                                    <DxButton Click="() => Grid.StartEditDataItemAsync(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                                }
+                                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, detailPermissionList))
+                                {
+                                    <DxButton Click="() => showContractAsingDelete(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                                }
+
+                            }
+                        </CellDisplayTemplate>
+                    </DxGridCommandColumn>
+
+                </Columns>
+
+                <EditFormTemplate Context="editFormContext">
+                    @{
+                        var contractAssign = (ContractAssignMemberModel)editFormContext.EditModel;
+                        wbs = (ContractLineModel)SelectedDataItem; // SelectedDataItem.Cast<ContractLineModel>;
+                        if (editFormContext.DataItem == null)
+                        {
+                            if (contractAssign.StartDate.Year == 1)
+                            {
+                                contractAssign.StartDate = DateTime.Today;
+                            }
+                            if (contractAssign.EndDate.Year == 1)
+                            {
+                                contractAssign.EndDate = DateTime.Today;
+                            }
+
+                            contractAssign.ContractCode = wbs.ContractCode;
+                            contractAssign.ContractLineId = wbs.ContractLineId.ToString();
+                            contractAssign.Mandays = wbs.Mandays;
+                        }
+                        else
+                        { }
+                    }
+                    <DxFormLayout CssClass="w-800">
+                        <DxFormLayoutItem Caption="Employee" ColSpanMd="6">
+                            <DxComboBox Data="@userL" Id="cbb_User" style="font-size:large"
+                                    ListRenderMode="ListRenderMode.Virtual"
+                                    FilteringMode="DataGridFilteringMode.Contains"
+                                    TextFieldName="@nameof(UserModel.UserName)"
+                                    ValueFieldName="@nameof(UserModel.UserName)"
+                                    @bind-Value="@contractAssign.EmployeeId"
+                                    CssClass="cw-480" />
+
+
+                        </DxFormLayoutItem>
+                        @*<DxFormLayoutItem Caption="Mandays" ColSpanMd="6">
+                    <DxSpinEdit @bind-Value="@contractAssign.Mandays" />
+                    </DxFormLayoutItem>*@
+
+                        <DxFormLayoutItem Caption="StartDate" ColSpanMd="6">
+                            <DxDateEdit PickerDisplayMode="DatePickerDisplayMode.Calendar" @bind-Date="@contractAssign.StartDate" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="EndDate" ColSpanMd="6">
+                            <DxDateEdit PickerDisplayMode="DatePickerDisplayMode.Calendar" @bind-Date="@contractAssign.EndDate" />
+                        </DxFormLayoutItem>
+                        @*<DxFormLayoutItem Caption="Description" ColSpanMd="6">
+                    <DxTextBox @bind-Text="@contractAssign.Description" />
+                    </DxFormLayoutItem>*@
+                    </DxFormLayout>
+                </EditFormTemplate>
+
+            </DxGrid>
+
+        </div>
+
+        @*<div class="col-lg-4 col-xl-3">
+    <div class="card">
+    <div class="card-body">
+
+    <table class="table table-striped table-border">
+    <tbody>
+
+    <tr>
+    <td>Name:</td>
+    <td class="text-right">@header.ContractName</td>
+    </tr>
+    <tr>
+    <td>CreatedOn:</td>
+    <td class="text-right">@header.CreatedOn</td>
+    </tr>
+    <tr>
+    <td>CreatedBy:</td>
+    <td class="text-right"><a href="profile.html">@header.CreatedBy</a></td>
+    </tr>
+    <tr>
+    <td>ModifiedOn:</td>
+    <td class="text-right"><a href="profile.html">@header.ModifiedOn</a></td>
+    </tr>
+    <tr>
+    <td>ModifiedBy:</td>
+    <td class="text-right">@header.ModifiedBy</td>
+    </tr>
+
+    <tr>
+    <td>StartDate:</td>
+    <td class="text-right">@header.StartDate</td>
+    </tr>
+    <tr>
+    <td>EndDate:</td>
+    <td class="text-right">@header.EndDate</td>
+    </tr>
+    <tr>
+    <td>Mandays:</td>
+    <td class="text-right">@header.Mandays</td>
+    </tr>
+
+    <tr>
+    <td>Status:</td>
+    <td class="text-right">@header.Status</td>
+    </tr>
+    </tbody>
+    </table>
+
+    </div>
+    </div>
+    <div class="card project-user">
+
+    <div class="card-body">
+    <DxGrid Data="lines">
+    <Columns>
+    <DxGridDataColumn FieldName="LineCode" Caption="WBS" />
+    </Columns>
+    </DxGrid>
+    </div>
+    </div>
+    <div class="card project-user">
+    <div class="card-body">
+    <DxGrid Data="contractMember">
+    <Columns>
+    <DxGridDataColumn FieldName="EmployeeId" Caption="EmployeeId" />
+    </Columns>
+    </DxGrid>
+
+    </div>
+    </div>
+    </div>*@
+
+    </div>
+
+
+}
+
+@code {
+    [Parameter] public string contractCode { get; set; }
+    //private ContractHeaderModel header = new();
+    private ContractHeaderModel header { get; set; }
+    object DataH { get; set; }
+
+    //private List<ContractLineModel> lines = new();
+    IEnumerable<ContractLineModel> lines { get; set; }
+    object SelectedDataItem { get; set; }
+
+    private List<ContractMemberModel> contractMember = new List<ContractMemberModel>();
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private string Username { get; set; }
+
+
+    List<RolePermission> permissionList = new List<RolePermission>();
+    List<RolePermission> detailPermissionList = new List<RolePermission>();
+
+    string Function = "CONTRACTHEADER"; //detail
+    string DetailFunction = "CONTRACTDETAIL";
+    string RoleName = "";
+    string Title = "WBSMASTER";
+
+
+    private List<ProjectModel> prjs = new List<ProjectModel>();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //var authState = await authenticationState;
+        //Username = authState.User.Identity.Name;
+
+
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            var user = authState?.User;
+            //Username = authState.User.Identity.Name;
+            //lấy roles
+            //header. = prjs.FirstOrDefault().PrjCode;
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0)
+            {
+                var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                RoleName = roleClaim.Value;
+
+                //Có role mới đi kiểm tra quyền và get dữ liệu tương ứng
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    await GetFunctionByRole();
+                    await GetDetailFunctionByRole();
+
+                    await LoadDataHeader();
+                    await LoadDataLine();
+                    await LoadUser();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/", true);
+                }
+
+            }
+
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+
+
+        }
+    }
+
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+
+    public async Task GetDetailFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, DetailFunction);
+            if (result.Success)
+            {
+                detailPermissionList = result.Data as List<RolePermission>;
+
+                if (detailPermissionList == null || detailPermissionList.Count <= 0)
+                {
+                    //SweetAlertResult resultSwal = await Swal.FireAsync(
+                    //  " Role Application",
+                    //    "Permission denied",
+                    //    SweetAlertIcon.Info
+                    // );
+                    //if (!string.IsNullOrEmpty(resultSwal.Value))
+                    //{
+                    //    URLHelper.NavigateTo("/index", true);
+                    //}
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission (Detail)",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                //if (!string.IsNullOrEmpty(resultSwal.Value))
+                //{
+                //    URLHelper.NavigateTo("/index", true);
+                //}
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data (Detail)",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            //if (!string.IsNullOrEmpty(resultSwal.Value))
+            //{
+            //    URLHelper.NavigateTo("/index", true);
+            //}
+        }
+    }
+
+
+
+    private async Task LoadDataHeader()
+    {
+        var itemheader = await WBheaderService.GetContractHeader3ByID(Username, contractCode);
+        if (itemheader.Success == true)
+        {
+            header = itemheader.Data as ContractHeaderModel;
+            DataH = header as ContractHeaderModel;
+        }
+        else
+        {
+            await Swal.FireAsync(
+            "Load Data WBSHeader",
+            itemheader.Message,
+            SweetAlertIcon.Error
+            );
+        }
+    }
+
+    private async Task LoadDataLine()
+    {
+        var lineResult = await lineService.GetContractLineByContractCode(contractCode);
+        if (lineResult.Success == true)
+        {
+
+            lines = lineResult.Data as List<ContractLineModel>;
+            SelectedDataItem = lines.FirstOrDefault(); // lines.Where(x => x.ContractLineId == "-1").FirstOrDefault(); // .Skip(1).Take(2).ToList();
+        }
+        else
+        {
+            await Swal.FireAsync(
+            "Load Data lines",
+            lineResult.Message,
+            SweetAlertIcon.Error
+            );
+        }
+    }
+    public async Task LoadcontractMember()
+    {
+
+        var dataUser = userService.GetByMember(contractCode);
+        if (dataUser.Result.Success == true)
+        {
+            contractMember = dataUser.Result.Data as List<ContractMemberModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+            "Load Data User",
+            dataUser.Result.Message,
+            SweetAlertIcon.Error
+            );
+        }
+    }
+
+
+    #region "Xy ly Contract Line"
+
+
+    public async Task showContractLineAdd()
+    {
+
+        var parameters = new ModalParameters()
+           .Add(nameof(AddContractLine.projectCode), contractCode);
+        //var parameters = new ModalParameters()
+        //   .Add(nameof(AddContractLine.Message), "");
+
+        var messageForm = Modal.Show<AddContractLine>("Add WBS", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed == true)
+        {
+            var wbs = result.Data as WBSHeaderModel;
+            var resultUpdate = await contractLineService.Create(wbs);
+            if (resultUpdate.Success == true)
+            {
+                //if (wbs.Status == "A")
+                //{
+                //    wbs.Status = "Active";
+
+                //}
+                //else
+                //{
+                //    wbs.Status = "InActive";
+
+                //}
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Create WBS",
+               "Success",
+               SweetAlertIcon.Success
+               );
+
+                await LoadDataLine();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create WBS",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+
+    }
+
+    private async Task ShowContractLineEdit(object DataItem)
+    {
+
+        var wbs2 = DataItem as ContractLineModel;
+        int id = int.Parse(wbs2.ContractLineId);
+        var parameters = new ModalParameters()
+            .Add(nameof(UpdateContractLine.lineId), id);
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+
+        var messageForm = Modal.Show<UpdateContractLine>("Update WBS", parameters, options);
+        var result = await messageForm.Result;
+        if (result.Confirmed)
+        {
+            var wbs = result.Data as WBSHeaderModel;
+            var resultUpdate = await contractLineService.Update(wbs);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Update WBS Assign Member Successfully Completed",
+               resultUpdate.Message,
+               SweetAlertIcon.Success
+               );
+                await LoadDataLine();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update WBS Assign Member",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+
+    protected async Task ShowContractLineDelete(object DataItem)
+    {
+        var wbs2 = DataItem as ContractLineModel;
+        int id = int.Parse(wbs2.ContractLineId);
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of WBS: {wbs2.LineCode}, Data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await contractLineService.Delete(id);
+            if (resultDelete.Success == true)
+            {
+                //URLHelper.NavigateTo("/contractLine", true);
+                await LoadDataLine();
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted WBS",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+
+
+    #endregion
+
+    #region "Xu ly Asign User"
+
+
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+    protected ContractLineModel wbs = new()
+        {
+            StartDate = DateTime.Now,
+            EndDate = DateTime.Now
+
+        };
+    IGrid Grid { get; set; }
+    //private List<ContractAssignMemberModel> contractAssignL = new List<ContractAssignMemberModel>();
+    IEnumerable<ContractAssignMemberModel> contractAssignL { get; set; }
+    private List<UserModel> userL = new List<UserModel>();
+    public string  userName {get;set;}
+    void OnSelectedDataItemChanged(object newSelection)
+    {
+
+        SelectedDataItem = newSelection;
+        Load_AsignUser(); //load grid
+
+    }
+
+
+
+    public async Task LoadUser()
+    {
+
+        var dataUser = userService.GetAllUser();
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "LoadData User",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+    private async Task Load_AsignUser()
+    {
+        //DateTime fromDate = new DateTime(1900, 01, 01);
+        //DateTime toDate = new DateTime(2023, 01, 01);
+
+        wbs = (ContractLineModel)SelectedDataItem; // SelectedDataItem.Cast<ContractLineModel>;
+        if (wbs == null) { return; }
+        var itemcontractAssignL = await contractAssignService.GetContractByContractLineId(wbs.ContractCode, wbs.ContractLineId.ToString());
+        if (itemcontractAssignL.Success == true)
+        {
+            //contractAssignL = itemcontractAssignL.Data as List<ContractAssignMemberModel>;
+
+            if (itemcontractAssignL.Data is List<ContractAssignMemberModel> aApprovals)
+            {
+                contractAssignL = aApprovals;
+
+                //SelectedDataItems =DataSource.Skip(1).Take(2).ToList();
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "LoadData WBS Assign Member",
+              itemcontractAssignL.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+
+    async Task Grid_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var contractAssignL = (ContractAssignMemberModel)e.EditModel;
+        if (e.IsNew)
+        {
+            //var parameters = new ModalParameters()
+            //.Add(nameof(AddContractAssignMember.Message), "");
+            //var messageForm = Modal.Show<AddContractAssignMember>("Add Contract Assign Member", parameters);
+
+            //var result = await messageForm.Result;
+
+
+            var resultAdd = await contractAssignService.Create(contractAssignL);
+            if (resultAdd.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create WBS Asign Member",
+                        Text = $"Create WBS Asign Member Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create WBS Assign Member",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+                return;
+            }
+        }
+
+        else
+        {
+            //_message = result.Data.ToString();
+            var resultUpdate = await contractAssignService.Update(contractAssignL);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Update WBS Assign Member",
+               "Success",
+               SweetAlertIcon.Success
+               );
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update WBS Assign Member",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+                return;
+            }
+        }
+
+        await Load_AsignUser(); //load grid
+    }
+
+    public async Task showContractAsingAdd()
+    {
+
+        wbs = (ContractLineModel)SelectedDataItem; // SelectedDataItem.Cast<ContractLineModel>;
+        if (wbs == null) { return; }
+        var parameters = new ModalParameters()
+            .Add(nameof(AddContractAssignMemberList.Message), "");
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+
+        var messageForm = Modal.Show<AddContractAssignMemberList>("Add WBS Assign Member", parameters, options);
+
+
+
+        var result = await messageForm.Result;
+        if (result.Confirmed)
+        {
+
+            var ChooseUserL = result.Data as List<UserModel>;
+            //var contractAssignL = result.Data as ContractAssignMemberModel;
+            ContractAssignMemberModel contractAssignL;
+            if (ChooseUserL == null) { return; }
+            foreach (var items in ChooseUserL.Cast<UserModel>())
+            {
+                contractAssignL = new();
+                contractAssignL.StartDate = wbs.StartDate;
+                contractAssignL.EndDate = wbs.EndDate;
+                contractAssignL.Mandays = wbs.Mandays;
+
+                contractAssignL.ContractCode = wbs.ContractCode;
+                contractAssignL.ContractLineId = wbs.ContractLineId;
+                contractAssignL.UserCode = items.UserName;
+                contractAssignL.Email = items.Email;
+
+                contractAssignL.EmployeeId = items.UserName;
+               userName =  contractAssignL.EmployeeId;
+
+                var resultAdd = await contractAssignService.Create(contractAssignL);
+                await commonService.WBSByUserSendmail(header.ContractName, wbs.LineCode, wbs.StartDate, wbs.EndDate, items.Email,header.PM);
+
+            }
+           
+
+            Load_AsignUser(); //load grid
+
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+
+
+    protected async Task showContractAsingDelete(object DataItem)
+    {
+
+        var wbsAssign = DataItem as ContractAssignMemberModel;
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of WBS Assign Member: {wbsAssign.EmployeeId}, Data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await contractAssignService.Delete(contractCode, wbsAssign.ContractLineId, wbsAssign.LineId);
+            if (resultDelete.Success == true)
+            {
+                //URLHelper.NavigateTo("/contractAssign", true);
+                await Load_AsignUser();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+
+
+
+    #endregion
+
+
+}

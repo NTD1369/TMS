@@ -1,0 +1,441 @@
+﻿@page "/country"
+
+@inject CountryController countryService
+@*@inject WeatherForecastService weatherService*@
+@using System.Security.Claims;
+
+
+<h3>Country</h3>
+@*kiểm tra button có insert không*@
+@*@if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+{
+    <button class="btn btn-success" @onclick="@(()=>showCountryAdd())">Add</button>
+}*@
+
+@*
+<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Active</th>
+            <th>Sapb1db</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var country in countries)
+        {
+            <tr>
+                <td>@country.Id</td>
+                <td>@country.Name</td>
+                <td>@country.Active</td>
+                <td>@country.Sapb1db</td>
+                
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                {
+                    <td><button type="button" @onclick="(async ()=> await ShowUpdateCountry(country.Id))" class="btn btn-info">Edit</button></td>
+                }
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                {
+                    <td><button type="button" @onclick="(async () => await DeleteCountry(country.Id))" class="btn btn-danger">Delete</button></td>
+                }
+
+            </tr>
+        }
+    </tbody>
+
+
+</table>*@
+@*<DxGrid Data="countries" ShowSearchBox="true" ShowGroupPanel="true">
+    <Columns>
+        <DxGridDataColumn FieldName="Id" Caption="Id" />
+        <DxGridDataColumn FieldName="Name" Caption="Tên" />
+        <DxGridDataColumn FieldName="Active" Caption="Active" />
+        <DxGridDataColumn FieldName="Sapb1db" Caption="Sapb1db" />
+        <DxGridDataColumn FieldName="Id" Caption="Action">
+            <CellDisplayTemplate>
+                @{
+                    var keyField = context.Value.ToString();
+                    var dataItem = context.DataItem as CountryModel;
+                    <DxButton Click="() => Edit(keyField, dataItem )" Text="Edit" RenderStyle="ButtonRenderStyle.Primary" />
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+    </Columns>
+</DxGrid>*@
+
+@*<button @onclick="showMessage">click</button>*@
+@*<button @onclick="showModal()">Modal</button>*@
+@*<button @onclick="showModal2">Modal 2</button>*@
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+
+<DxGrid Data="countries" style="margin-top:10px"
+        AllowSelectRowByClick="true"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns >
+        @*<DxGridDataColumn FieldName="Id" Caption="Id" />*@
+        <DxGridDataColumn FieldName="Name" Caption="Name" />
+        <DxGridDataColumn FieldName="Active" Caption="Active">
+            <CellDisplayTemplate>
+                @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.True)
+                {
+                    <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.True)</span>
+                }
+                else
+                {
+                    <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.False)</span>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="Sapb1db" Caption="Sapb1db" />
+        <DxGridDataColumn FieldName="HREmail" Caption="HREmail" />
+        <DxGridCommandColumn MinWidth="250">
+            <HeaderTemplate>
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                {
+                    <button class="btn btn-success" @onclick="@(()=>showCountryAdd())">Add</button>
+                }
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    <DxButton Click="() => ShowUpdateCountry(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                    <DxButton Click="() =>DeleteCountry(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+</DxGrid>
+
+
+
+
+
+@code {
+    //[Parameter]
+    //public string IdTest { get; set; }
+
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    protected async Task DeleteCountry(object DataItem)
+    {
+        var wbs2 = DataItem as CountryModel;
+        int id = wbs2.Id;
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of Country {wbs2.Id} data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await countryService.Delete(id);
+            if (resultDelete.Success == true)
+            {
+                await LoadDataCountry();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted Country",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+
+    protected async Task NavigaToUpdateCountry(int id)
+    {
+        URLHelper.NavigateTo("/updateCountry/" + id);
+    }
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+
+    private List<CountryModel> countries = new List<CountryModel>();
+
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "COUNTRY";
+    string RoleName = "";
+    string Title = "COUNTRY";
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+
+                    //lấy quyền
+                    await GetFunctionByRole();
+
+                    await LoadDataCountry();
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/country", true);
+                }
+            }
+
+
+        }
+    }
+
+    public async Task LoadDataCountry()
+    {
+        var countryrs = await countryService.GetAll();
+        if (countryrs.Success == true)
+        {
+            countries = countryrs.Data as List<CountryModel>;
+            StateHasChanged();
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Country",
+              countryrs.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+
+
+
+
+    //test chơi
+
+    private void showMessage()
+    {
+        Swal.FireAsync("test", "test model", SweetAlertIcon.Success);
+    }
+    //update country
+    private async Task Edit(string ID, CountryModel objectX)
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(Counter.Message), ID);
+        var countryEdit = countries.Where(x => x.Id.ToString() == ID).FirstOrDefault();
+
+
+        parameters.Add(nameof(Counter.Country), countryEdit);
+
+        var resulModal = Modal.Show<Counter>("", parameters);
+
+        var result = await resulModal.Result;
+        if (result.Confirmed)
+        {
+            var countryResult = result.Data as CountryModel;
+
+            await Swal.FireAsync("test", "OK", SweetAlertIcon.Success);
+        }
+        else
+        {
+            await Swal.FireAsync("test", "test model", SweetAlertIcon.Error);
+        }
+    }
+
+    private async Task showModal()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(Counter.Message), "Hello, World!");
+        Modal.Show<Counter>("", parameters);
+
+    }
+
+    private async Task showModal2()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(Counter.Message), "Hello, World sssds!");
+        var resul = Modal.Show<Counter>("", parameters);
+        //resul.Result
+    }
+    private async Task ShowUpdateCountry(object DataItem)
+    {
+        var wbs2 = DataItem as CountryModel;
+        int id = wbs2.Id;
+        var parameters = new ModalParameters()
+            .Add(nameof(UpdateCoutries.CountryId), id);
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+
+        //var parameters = new ModalParameters()
+        //    .Add(nameof(UpdateCoutries.CountryId), id);
+        var messageForm = Modal.Show<UpdateCoutries>("Update Country", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var country = result.Data as CountryModel;
+            var resultAdd = await countryService.Update(country);
+            if (resultAdd.Success == true)
+            {
+                await Swal.FireAsync(
+               "Update country",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadDataCountry();   
+                
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update country",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+    }
+    public async Task showCountryAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(AddNewCountry.Message), "");
+        var messageForm = Modal.Show<AddNewCountry>("Add New Country", parameters);
+        var result = await messageForm.Result;
+
+        if (result.Confirmed == true)
+        {
+            var countryAdd = result.Data as CountryModel;
+            var resultUpdate = await countryService.Create(countryAdd);
+            if (resultUpdate.Success == true)
+            {
+               
+                await Swal.FireAsync(
+               "Create Team",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadDataCountry();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Country",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+}

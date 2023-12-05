@@ -1,0 +1,142 @@
+﻿@page "/teamAdd"
+@inject TeamController teamService
+@inject UserController userService
+
+
+
+
+@*<h3>AddNewCountry</h3>*@
+<EditForm Model="teamL" OnValidSubmit="SaveTeam">
+    @*<DataAnnotationsValidator/>*@
+   @* <div class="mb-3">
+        <label for="Name">Id</label>
+        <div class="col-md-4">
+            <InputNumber class="form-control" @bind-Value="country.Id"></InputNumber>
+        </div>
+    </div>*@
+    <div class="mb-3">
+        <label for="Name">Name</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="teamL.Name"></InputText>
+        </div>
+    </div>
+
+  @*  <div class="mb-3">
+        <label for="Name">Leader</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="teamL.Leader"></InputText>
+        </div>
+
+    </div>*@
+    <div class="mb-3">
+        <label for="leader">Leader</label>
+        <DxComboBox Data="@userL" Id="cbb_Leader" style="font-size:large"
+                    ListRenderMode="ListRenderMode.Virtual"
+                    FilteringMode="DataGridFilteringMode.Contains"
+                    TextFieldName="@nameof(UserModel.UserName)"
+                    ValueFieldName="@nameof(UserModel.UserName)"
+                    @bind-Value="teamL.Leader"
+                    @bind-Text="teamL.Leader"
+                    CssClass="cw-480" />
+    </div>
+    <div class="row">
+        <div class="col-md-2"> <label>Active</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div style="text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button"  class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+    </div>
+</EditForm>
+
+
+@code {
+    private List<UserModel> userL = new List<UserModel>();
+
+    public bool check { get; set; }
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            teamL.Status = "A";
+        }
+        else
+        {
+            teamL.Status = "I";
+
+        }
+    }
+    protected TeamModel teamL = new()
+    {
+            Status = "I",
+    };
+    [Parameter] public string Message { get; set; } = "";
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadUser();
+    }
+    protected async Task SaveTeam()
+    {
+       
+        //var resultAdd = await teamService.Create(teamL);
+        //if (resultAdd.Success == true)
+        //{
+        //    SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+        //    {
+        //        Title = "Create Team",
+        //        Text = $"Create Team Successfully Completed",
+        //        Icon = SweetAlertIcon.Success,
+        //        ShowCancelButton = false,
+        //        ConfirmButtonText = $"OK",
+        //        CancelButtonText = "No"
+        //    });
+        //    if (!string.IsNullOrEmpty(result.Value))
+        //    { 
+        //        URLHelper.NavigateTo("/team",true);
+        //    }
+           
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Create Team",
+        //      resultAdd.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+        await BlazoredModal.CloseAsync(ModalResult.Ok(teamL));
+
+    }
+
+
+    private async void CancelAdd()
+    {
+        await BlazoredModal.CancelAsync();
+
+    }
+    public async void LoadUser()
+    {
+
+        var dataUser = userService.GetAllUser();
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data user",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+}

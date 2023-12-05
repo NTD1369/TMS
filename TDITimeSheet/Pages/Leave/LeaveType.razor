@@ -1,0 +1,407 @@
+﻿@page "/leave_type"
+
+@attribute [Authorize]
+
+@inject TDI.Application.Interfaces.ILeaveTypeService leaveTypeService
+@inject TDI.Application.Interfaces.ICountryService countryService
+
+<PageTitle>TDI - Leave Type</PageTitle>
+
+@*<h3>Leave Type</h3>*@
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Leave Type</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+            @*@if (DataSource != null && DataSource.Count() > 0)
+            {
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+
+            }*@
+            @*kiểm tra button có insert không*@
+            @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+            {
+                <DxButton class="btn add-btn  mr-4" Click="() => OnAddNewRow() " IconCssClass="fa fa-plus" Text="New" RenderStyle="ButtonRenderStyle.None" />
+
+            }
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+
+<DxGrid @ref="Grid" style="height: calc(100vh - 22vh)"
+        Data="@DataSource"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditModelSaving="OnEditModelSaving"
+        DataItemDeleting="OnDataItemDeleting"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+
+    <Columns>
+        <DxGridDataColumn FieldName="Name" MinWidth="100" />
+        <DxGridDataColumn FieldName="Description" MinWidth="100" />
+        <DxGridDataColumn FieldName="Active" UnboundType="GridUnboundColumnType.Boolean" MinWidth="50">
+            <CellDisplayTemplate>
+                @if ((bool)context.Value == true)
+                {
+                    @*<span class="la la-check-circle"></span>*@
+                    @*<span class="grid-icon grid-icon-check"></span>*@
+                    <i class="la la-check text-info mr-5"></i>
+                }
+                else
+                {
+                    @*<span class="la la-circle"></span>*@
+                    @*<i class="la la-square-o text-dark mr-5"></i>*@
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="CarryForward" Caption="IsForward" UnboundType="GridUnboundColumnType.Boolean" MinWidth="50">
+            <CellDisplayTemplate>
+                @if ((bool)context.Value == true)
+                {
+                    @*<span class="la la-check-circle"></span>*@
+                    <i class="la la-check text-info mr-5"></i>
+                }
+                else
+                {
+                    @*<span class="la la-circle"></span>*@
+                    @*<i class="la la-square-o text-info mr-5"></i>*@
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="MaxDay" Caption="Quota" TextAlignment="GridTextAlignment.Center" MinWidth="50" />
+        <DxGridDataColumn FieldName="CountryName" Caption="Country" MinWidth="50" />
+        <DxGridDataColumn FieldName="ProjectCode" MinWidth="250" />
+        <DxGridDataColumn FieldName="WBSCode" MinWidth="100" />
+        <DxGridDataColumn FieldName="ExcludeDash" Caption="Exclude Dashboard" UnboundType="GridUnboundColumnType.Boolean" MinWidth="100">
+            <CellDisplayTemplate>
+                @if ((bool)context.Value == true)
+                {
+                    <i class="la la-check text-info mr-5"></i>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <DxGridCommandColumn MinWidth="200">
+            <HeaderTemplate>
+                @*<DxButton Click="() => Grid.StartEditNewRowAsync()" Text="New" RenderStyle="ButtonRenderStyle.Info" />*@
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                    {
+                        <DxButton Click="() => OnEditRow(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                    }
+                    //<DxButton Click="() => OnDeleteRow(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+    <EditFormTemplate Context="editFormContext">
+        @{
+            var leaveType = (LeaveTypeModel)editFormContext.EditModel;
+        }
+        <DxFormLayout CssClass="w-800">
+            <DxFormLayoutItem Caption="Name" ColSpanMd="12">
+                <DxTextBox @bind-Text="@leaveType.Name" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Description" ColSpanMd="12">
+                <DxTextBox @bind-Text="@leaveType.Description" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Active" ColSpanMd="12">
+                <DxCheckBox @bind-Checked="@leaveType.Active" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="IsForward" ColSpanMd="12">
+                <DxCheckBox @bind-Checked="@leaveType.CarryForward" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="MaxDay" ColSpanMd="12">
+                <DxSpinEdit @bind-Value="@leaveType.MaxDay" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Country" ColSpanMd="12">
+                <DxComboBox Data="@CountrySource"
+                            TextFieldName="@nameof(CountryModel.Name)"
+                            ValueFieldName="@nameof(CountryModel.Id)"
+                            CssClass="cw-480"
+                            @bind-Value="@leaveType.CountryId" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="ProjectCode" ColSpanMd="12">
+                <DxComboBox Data="@ProjectCodeSource"
+                            TextFieldName="@nameof(ContractModel.ContractName)"
+                            ValueFieldName="@nameof(ContractModel.ContractCode)"
+                           
+                            @bind-Value="@leaveType.ProjectCode"
+                            SelectedItemChanged="@((ContractModel contract) => OnSelectContractChanged(contract))"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="WBSCode" ColSpanMd="12">
+                <DxComboBox Data="@WBSCodeSource"
+                            @bind-Value="@leaveType.WBSCode"
+                         
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Exclude Dashboard" ColSpanMd="12">
+                <DxCheckBox @bind-Checked="@leaveType.ExcludeDash" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem ColSpanMd="12">
+                <ValidationSummary />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<LeaveTypeModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+    IEnumerable<CountryModel> CountrySource { get; set; }
+    IEnumerable<ContractModel> ContractSource { get; set; }
+    IEnumerable<ContractModel> ProjectCodeSource { get; set; }
+    IEnumerable<string> WBSCodeSource { get; set; }
+
+    string Function = "LEAVETYPE";
+    string RoleName = "";
+    string Title = "Leave";
+    List<RolePermission> permissionList = new List<RolePermission>();
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            User = authState?.User;
+
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0)
+            {
+                var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+                RoleName = roleClaim.Value;
+            }
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetFunctionByRole();
+                await UpdateDataAsync();
+
+                var result = await countryService.GetCountryActive(-1);
+                if (result.Success)
+                {
+                    if (result.Data is List<CountryModel> countries)
+                    {
+                        CountrySource = countries;
+                    }
+                }
+
+                await GetContractDataAsync();
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+        //return base.OnInitializedAsync();
+    }
+
+    //protected override async Task OnAfterRenderAsync(bool firstRender)
+    //{
+    //    if (firstRender)
+    //    {
+    //        await Grid.StartEditNewRowAsync();
+    //    }
+    //}
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      "Leave Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+    public void OnAddNewRow()
+    {
+        Title = "Add New Leave Type"; Grid.StartEditNewRowAsync();
+    }
+    public void OnEditRow(object DataItem)
+    {
+        Title = "Edit Leave Type"; Grid.StartEditDataItemAsync(DataItem);
+    }
+    public void OnDeleteRow(object DataItem)
+    {
+        Title = "Delete Leave Type"; Grid.ShowDataItemDeleteConfirmation(DataItem);
+    }
+
+    private async Task UpdateDataAsync()
+    {
+        DataSource = new List<LeaveTypeModel>();
+        var result = await leaveTypeService.GetAllLeaveType(0);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveTypeModel> leaves)
+            {
+                DataSource = leaves;
+            }
+        }
+    }
+
+    private async Task GetContractDataAsync()
+    {
+        ContractSource = new List<ContractModel>();
+        ProjectCodeSource = new List<ContractModel>();
+        var result = await leaveTypeService.GetContractData(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<ContractModel> contracts)
+            {
+                ContractSource = contracts;
+
+                ProjectCodeSource = contracts.DistinctBy(x => new { x.ContractCode, x.ContractName }).ToList();
+            }
+        }
+    }
+
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private async Task OnEditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var leave = (LeaveTypeModel)e.EditModel;
+
+        if (e.IsNew)
+        {
+            var res = leaveTypeService.InsertLeaveType(User.Identity.Name, leave);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        else
+        {
+            var res = leaveTypeService.UpdateLeaveType(User.Identity.Name, (LeaveTypeModel)e.DataItem, leave);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        await UpdateDataAsync();
+    }
+
+    private async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var res = leaveTypeService.DeleteLeaveType((LeaveTypeModel)e.DataItem);
+        if (res.Success)
+        {
+            await Swal.FireAsync("Delete Data", res.Message, SweetAlertIcon.Success);
+        }
+        else
+        {
+            await Swal.FireAsync("Delete Data", res.Message, SweetAlertIcon.Error);
+        }
+        await UpdateDataAsync();
+    }
+
+    public void OnSelectContractChanged(ContractModel contract)
+    {
+        WBSCodeSource = ContractSource.Where(x => x.ContractCode == contract.ContractCode).Select(s => s.WBSCode).ToList();
+    }
+}

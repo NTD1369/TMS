@@ -1,0 +1,69 @@
+﻿@page "/addRoles"
+@inject RolesController rolesService
+
+@*<h3>RolesAdd</h3>*@
+<EditForm Model="roles" OnValidSubmit="SaveRoles">
+
+    <div class="mb-3">
+        <label for="Name">Name</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="roles.Name"></InputText>
+        </div>
+    </div>
+   @* <div class="mb-3">
+        <label for="Name">NormalizedName</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="roles.NormalizedName"></InputText>
+        </div>
+    </div>*@
+    @* <div class="mb-3">
+    <label for="Name">ConcurrencyStamp</label>
+    <div class="">
+    <InputText class="form-control" @bind-Value="roles.ConcurrencyStamp"></InputText>
+    </div>
+    </div>*@
+    <div class="mb-3">
+        <label for="Name">Description</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="roles.Description"></InputText>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="Name">Status</label>
+        <div class="">
+            <DxComboBox Data="@StatusLs"
+                        @bind-Value="roles.Status"
+                        CssClass="cw-480" />
+
+        </div>
+    </div>
+
+    <div style="text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+    </div>
+</EditForm>
+@code {
+
+    IEnumerable<string> StatusLs = new List<string>() {
+    "Active",
+    "InActive",
+
+  };
+    [Parameter] public string Message { get; set; } = "";
+    private RolesModel roles = new RolesModel()
+        {
+            Status = "Active"
+        };
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+    protected async Task SaveRoles()
+    {
+
+        await BlazoredModal.CloseAsync(ModalResult.Ok(roles));
+    }
+    private void CancelAdd()
+    {
+        BlazoredModal.CancelAsync();
+
+    }
+}

@@ -1,0 +1,164 @@
+﻿@page "/leave_dashboard"
+
+@attribute [Authorize]
+
+@inject TDI.Application.Interfaces.ILeaveService leaveService
+
+<PageTitle>TDI - Leave Dashboard</PageTitle>
+
+@*<h3>LeaveDashboard</h3>*@
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager 1</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Dashboard</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    @foreach (var leaveDash in DataSource)
+    {
+        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+            <div class="card dash-widget">
+                <div class="card-body">
+                    <span class="dash-widget-icon"><i class="fa fa-cubes"></i></span>
+                    <div class="dash-widget-info">
+                        <h3>@leaveDash.LeaveQuota.ToString("N1")</h3>
+                        <span>@leaveDash.LeaveType @leaveDash.Year</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (leaveDash.BringLeave > 0)
+        {
+            <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+                <div class="card dash-widget">
+                    <div class="card-body">
+                        <span class="dash-widget-icon"><i class="fa fa-clone"></i></span>
+                        <div class="dash-widget-info">
+                            <h3>@leaveDash.BringLeave.ToString("N1")</h3>
+                            <span>Carry Foward @(leaveDash.Year - 1)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<div class="row">
+    @if (DataSource != null)
+    {
+        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+            <div class="card dash-widget">
+                <div class="card-body">
+                    <span class="dash-widget-icon"><i class="fa fa-area-chart"></i></span>
+                    <div class="dash-widget-info">
+                        <h3>@((DataSource.Sum(x => x.LeaveQuota) + DataSource.Sum(x => x.BringLeave)).ToString("N1"))</h3>
+                        <span>Total Leave @Year</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="row">
+    @foreach (var leaveDash in DataSource)
+    {
+        if (leaveDash.TakenDays != 0)
+        {
+            <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+                <div class="card dash-widget">
+                    <div class="card-body">
+                        <span class="dash-widget-icon"><i class="fa fa-bar-chart"></i></span>
+                        <div class="dash-widget-info">
+                            <h3>@leaveDash.TakenDays.ToString("N1")</h3>
+                            <span>@leaveDash.LeaveType Taken @leaveDash.Year</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+
+<div class="row">
+    @if (DataSource != null)
+    {
+        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+            <div class="card dash-widget">
+                <div class="card-body">
+                    <span class="dash-widget-icon"><i class="fa fa-bell-o"></i></span>
+                    <div class="dash-widget-info">
+                        <h3>@((DataSource.Sum(x => x.LeaveQuota) + DataSource.Sum(x => x.BringLeave) + DataSource.Sum(x => x.TakenDays)).ToString("N1"))</h3>
+                        <span>Remaining Leave @Year</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+<hr style="background-color : red"/>
+
+
+
+@code {
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<LeaveBalanceReportModel> DataSource { get; set; }
+    private int Year { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            User = authState?.User;
+            Year = DateTime.Now.Year;
+
+            //lấy roles
+            var Claims = authState.User.Claims;
+            //if (Claims != null && Claims.Count() > 0)
+            //{
+            //    var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+            //    RoleName = roleClaim.Value;
+            //}
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetLeaveDashboardDataAsync();
+
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+
+        //return base.OnInitializedAsync();
+    }
+
+    private async Task GetLeaveDashboardDataAsync()
+    {
+        DataSource = new List<LeaveBalanceReportModel>();
+        var result = await leaveService.GetLeaveDashboardByUser(User.Identity.Name, this.Year);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveBalanceReportModel> leaveDashboard)
+            {
+                DataSource = leaveDashboard;
+            }
+        }
+    }
+
+}

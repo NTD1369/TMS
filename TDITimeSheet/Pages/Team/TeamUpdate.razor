@@ -1,0 +1,120 @@
+﻿@page "/teamUpdate"
+@inject TeamController teamService
+@inject UserController userService
+
+
+
+<EditForm Model="teamL" OnValidSubmit="SaveCountry">
+    @*<DataAnnotationsValidator/>*@
+    <div class="mb-3">
+        <label for="Name">Name</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="teamL.Name"></InputText>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="leader">Leader</label>
+        <DxComboBox Data="@userL" Id="cbb_Leader" style="font-size:large"
+                    ListRenderMode="ListRenderMode.Virtual"
+                    FilteringMode="DataGridFilteringMode.Contains"
+                    TextFieldName="@nameof(UserModel.UserName)"
+                    ValueFieldName="@nameof(UserModel.UserName)"
+                    @bind-Value="teamL.Leader"
+                    CssClass="cw-480" />
+    </div>
+    <div class="row">
+        <div class="col-md-2"> <label>Active</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div style="text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelUpdate">Cancel</button>
+
+    </div>
+</EditForm>
+
+
+@code {
+    private List<UserModel> userL = new List<UserModel>();
+
+    public bool check { get; set; }
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            teamL.Status = "A";
+        }
+        else
+        {
+            teamL.Status = "I";
+
+        }
+    }
+    protected TeamModel teamL = new();
+    [Parameter] public int teamId { get; set; }
+    [Parameter] public string Message { get; set; } = "";
+    //List<TeamModel> teams = new List<TeamModel>();
+    protected override async Task OnInitializedAsync()
+    {
+        LoadUser();
+        var result = await teamService.GetById(teamId);
+        if (result.Success == true)
+        {
+            teamL = result.Data as TeamModel;
+            if (teamL.Status == "A")
+            {
+                check = true;
+            }
+            else
+            {
+                check = false;
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Get Team",
+             result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+    
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    private void CancelUpdate()
+    {
+        BlazoredModal.CancelAsync();
+    }
+
+    protected async Task SaveCountry()
+    {
+        await BlazoredModal.CloseAsync(ModalResult.Ok(teamL));
+    }
+
+    public async void LoadUser()
+    {
+
+        var dataUser = userService.GetAllUser();
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data user",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+}

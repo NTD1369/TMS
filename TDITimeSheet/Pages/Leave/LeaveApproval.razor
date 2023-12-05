@@ -1,0 +1,539 @@
+﻿@page "/leave_approval"
+@using System.Globalization;
+
+@attribute [Authorize]
+
+@inject TDI.Application.Interfaces.ILeaveService leaveService
+@inject TDI.Application.Interfaces.ILeaveTypeService leaveTypeService
+@inject CommonController commonService
+
+<PageTitle>TDI - Leave Approval</PageTitle>
+
+@*<h3>Leave Approval</h3>*@
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Leave Approval</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+            @*@if (DataSource != null && DataSource.Count() > 0)
+            {
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+
+            }*@
+            @*kiểm tra button có insert không*@
+            @*@if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+            {
+            <DxButton class="btn add-btn  mr-4" Click="() => OnAddNewRow() " IconCssClass="fa fa-plus" Text="New" RenderStyle="ButtonRenderStyle.None" />
+
+            }*@
+
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>From</label>
+            <DxDateEdit Date="overrideFromDate" DateExpression="@(() => overrideFromDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "LeaveFrom"))" CssClass="cw-320" />
+
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>To</label>
+            <DxDateEdit Date="overrideToDate" DateExpression="@(() => overrideToDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "LeaveTo"))" CssClass="cw-320" />
+        </div>
+    </div>
+    <div class="col-md-1" style="margin-top:32px">
+        <button class="btn btn-primary" @onclick="@(() => LoadData())">Filter</button>
+    </div>
+</div>
+
+
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+@* test *@
+@* test1 *@
+<DxGrid @ref="Grid"
+        Data="@DataSource" style="height: calc(100vh - 25vh)"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditModelSaving="OnEditModelSaving"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        SizeMode="SizeMode.Medium"
+        ShowFilterRow="@UseShowFilterRow"
+        PopupEditFormHeaderText="@Title">
+    <Columns>
+        @*   <DxGridDataColumn FieldName="Username" MinWidth="100">
+        <FilterRowCellTemplate>
+        <DxTextBox TextChanged="(string v) => context.FilterRowValue = v"
+        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </FilterRowCellTemplate>
+        </DxGridDataColumn> *@
+        <DxGridCommandColumn MinWidth="100">
+            <HeaderTemplate>
+                @*<DxButton Click="() => Grid.StartEditNewRowAsync()" Text="New" RenderStyle="ButtonRenderStyle.Info" Visible="false" />*@
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    var leave = (LeaveModel)context.DataItem;
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                    {
+                        bool isEnableApprove = true;
+                        bool isEnableDecline = true;
+                        bool isVisableApprove = true;
+                        bool isVisableDisApprove = false;
+                        LeaveModel leaveApprove = TDI.Utilities.Extensions.ExtensionsNew.Clone<LeaveModel>((LeaveModel)context.DataItem);
+                        leaveApprove.LeaveStatus = TDI.Utilities.Constants.LeaveStatusType.Approved;
+
+                        LeaveModel leaveDecline = TDI.Utilities.Extensions.ExtensionsNew.Clone<LeaveModel>((LeaveModel)context.DataItem);
+                        leaveDecline.LeaveStatus = TDI.Utilities.Constants.LeaveStatusType.Declined;
+
+                        LeaveModel leaveDisApprove = TDI.Utilities.Extensions.ExtensionsNew.Clone<LeaveModel>((LeaveModel)context.DataItem);
+                        leaveDisApprove.LeaveStatus = TDI.Utilities.Constants.LeaveStatusType.Declined;  // gan lại DisApprove = Declined
+
+                        if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.Approved)
+                        {
+                            isEnableApprove = false;
+                            isEnableDecline = false;
+                            isVisableApprove = false;
+                            isVisableDisApprove = true;
+                        }
+
+                        if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.Declined)
+                        {
+                            isEnableApprove = false;
+                            isEnableDecline = false;
+                            isVisableApprove = false;
+                            isVisableDisApprove = true;
+                        }
+
+
+                        // if (leave.LeaveStatus == "Approved" || leave.LeaveStatus == "Approved")
+                        <div class="row">
+                            <div class="col-md-6">
+                                <DxButton Click="() => OnEditRow(leaveApprove)" SizeMode="SizeMode.Large" IconCssClass="la la-check" RenderStyle="ButtonRenderStyle.Success" Enabled="@isEnableApprove" Visible="@isVisableApprove" />
+                            </div>
+                            <div class="col-md-6">
+                                <DxButton Click="() => OnEditRow(leaveDecline)" SizeMode="SizeMode.Large" IconCssClass="la la-close" RenderStyle="ButtonRenderStyle.Danger" Enabled="@isEnableDecline" Visible="@isVisableApprove" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6"></div>
+                            <div class="col-md-6">
+                                <DxButton Click="() => OnEditRow(leaveDisApprove)" SizeMode="SizeMode.Large" IconCssClass="la la-close" RenderStyle="ButtonRenderStyle.Danger" Visible="@isVisableDisApprove" />
+                            </div>
+                        </div>
+
+                        //if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.New)
+                        //{
+                        //    <DxButton Click="() => Grid.StartEditDataItemAsync(context.DataItem)" Text="Approve" RenderStyle="ButtonRenderStyle.Success"/>
+                        //}
+                        //else if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.Approved)
+                        //{
+                        //    <DxButton Click="() => Grid.StartEditDataItemAsync(context.DataItem)" Text="Decline" RenderStyle="ButtonRenderStyle.Danger" />
+                        //    //<DxButton Click="() => Grid.ShowDataItemDeleteConfirmation(context.DataItem)" Text="Decline" RenderStyle="ButtonRenderStyle.Danger" />
+                        //}
+                    }
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+        <DxGridDataColumn FieldName="FullName" Caption="UserName" MinWidth="100" />
+        @* <FilterRowCellTemplate>
+        <DxComboBox Value="(string)context.FilterRowValue"
+        ValueChanged="(string v) => context.FilterRowValue = v"
+        Data="LeaveTypeSource" ValueFieldName="Name" TextFieldName="Name"
+        FilteringMode="DataGridFilteringMode.Contains"
+        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </FilterRowCellTemplate> *@
+        @* </DxGridDataColumn> *@
+        <DxGridDataColumn FieldName="LeaveFrom" MinWidth="100" TextAlignment="GridTextAlignment.Center" DisplayFormat="{0:dd/MM/yyyy}">
+            <FilterRowCellTemplate>
+                <DxDateEdit Date="(DateTime?)context.FilterRowValue"
+                            DateChanged="(DateTime? v) => context.FilterRowValue = v"
+                            PickerDisplayMode="DatePickerDisplayMode.Calendar" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="LeaveTo" MinWidth="100" TextAlignment="GridTextAlignment.Center" DisplayFormat="{0:dd/MM/yyyy}">
+            <FilterRowCellTemplate>
+                <DxDateEdit Date="(DateTime?)context.FilterRowValue"
+                            DateChanged="(DateTime? v) => context.FilterRowValue = v"
+                            PickerDisplayMode="DatePickerDisplayMode.Calendar" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="NumberOfDays" MinWidth="50" TextAlignment="GridTextAlignment.Left" Caption="Day(s)">
+            <FilterRowCellTemplate>
+                <DxSpinEdit Value="(decimal?)context.FilterRowValue"
+                            ValueChanged="(decimal? v) => context.FilterRowValue = v" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="LeaveStatus" MinWidth="80" Caption="Status" SortMode="GridColumnSortMode.DisplayText" FilterRowOperatorType="GridFilterRowOperatorType.Equal">
+            <FilterRowCellTemplate>
+                <DxComboBox Value="(string)context.FilterRowValue"
+                            ValueChanged="(string v) => context.FilterRowValue = v"
+                            Data="ListLeaveStatus"
+                            FilteringMode="DataGridFilteringMode.Contains"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+            </FilterRowCellTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="LeaveCountryName" Caption="LeaveCountry" MinWidth="100" />
+        <DxGridDataColumn FieldName="LeaveType" MinWidth="100" />
+        <DxGridDataColumn FieldName="Reason" MinWidth="100" />
+        <DxGridDataColumn FieldName="ApprovedBy" MinWidth="100" Caption="Approver" />
+        @* <DxGridDataColumn FieldName="StatusUpdated" Width="10%" MinWidth="50" TextAlignment="GridTextAlignment.Center" Caption="Updated" DisplayFormat="{0:dd/MM/yyyy}">
+        <FilterRowCellTemplate>
+        <DxDateEdit Date="(DateTime?)context.FilterRowValue"
+        DateChanged="(DateTime? v) => context.FilterRowValue = v"
+        PickerDisplayMode="DatePickerDisplayMode.Calendar" />
+        </FilterRowCellTemplate>
+        </DxGridDataColumn>*@
+        <DxGridDataColumn FieldName="Remark" MinWidth="100" />
+        <DxGridDataColumn FieldName="IsMorning2" MinWidth="100" Caption="Shift" />
+
+        @*<DxGridDataColumn FieldName="IsMorning" Width="8%" />*@
+        @*  <DxGridDataColumn FieldName="IsMorning" Caption="Shift" MinWidth="100" UnboundType="GridUnboundColumnType.Boolean">
+        <CellDisplayTemplate>
+        @if ((bool)context.Value == true)
+        {
+        <span class="la la-check"></span>
+
+
+        }
+        </CellDisplayTemplate>
+        <FilterRowCellTemplate>
+        <DxComboBox Value="(bool?)context.FilterRowValue"
+        ValueChanged="(bool? v) => context.FilterRowValue = v"
+        Data="BooleanStates" ValueFieldName="Key" TextFieldName="Value"
+        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </FilterRowCellTemplate>
+        </DxGridDataColumn> *@
+
+    </Columns>
+    <EditFormTemplate Context="editFormContext">
+        @{
+            var leave = (LeaveModel)editFormContext.EditModel;
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="Remark" ColSpanMd="12">
+                <DxMemo @bind-Text="@leave.Remark" Rows="2" />
+            </DxFormLayoutItem>
+            @*<DxFormLayoutItem ColSpanMd="12">
+            <InputRadioGroup @bind-Value="@leave.LeaveStatus">
+            <InputRadio TValue="string" Value="@TDI.Utilities.Constants.LeaveStatusType.Approved" /> <span style="padding-left: 10px; color:orange; font-weight:bold; font-size:large;">Approve</span><br />
+            <InputRadio TValue="string" Value="@TDI.Utilities.Constants.LeaveStatusType.Decline" /> <span style="padding-left: 10px; color: orangered; font-weight:bold; font-size:large;">Decline</span>
+            </InputRadioGroup>
+            </DxFormLayoutItem>*@
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+
+    //public string userName = "";
+    IEnumerable<LeaveModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+    IEnumerable<LeaveTypeModel> LeaveTypeSource { get; set; }
+
+    private DateTime FromDate { get; set; }
+    private DateTime ToDate { get; set; }
+
+    bool UseShowFilterRow { get; set; } = false;
+
+    static readonly IReadOnlyList<string> ListLeaveStatus = new string[] {
+        new(TDI.Utilities.Constants.LeaveStatusType.New),
+        new(TDI.Utilities.Constants.LeaveStatusType.Approved),
+        new(TDI.Utilities.Constants.LeaveStatusType.Decline)
+    };
+
+    static readonly IReadOnlyList<KeyValuePair<bool, string>> BooleanStates = new KeyValuePair<bool, string>[] {
+        new(true, "Yes"),
+        new(false, "No")
+    };
+
+    string Function = "LEAVEADMIN";
+    string RoleName = "";
+    string Title = "Leave";
+    List<RolePermission> permissionList = new List<RolePermission>();
+
+
+    private DateTime overrideFromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime overrideToDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month));
+    // DateTime.DaysInMonth(date.Year, date.Month); // DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.d());
+    // private DateTime overrideToDate = DateTime.Today;
+
+    void OnDateChanged(DateTime newValue, string ObjType)
+    {
+        if (ObjType == "LeaveFrom") { overrideFromDate = newValue; }
+        if (ObjType == "LeaveTo") { overrideToDate = newValue; }
+
+    }
+    private async Task LoadData()
+    {
+        await GetLeaveDataAsync();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            FromDate = new DateTime(1900, 01, 01);
+            ToDate = new DateTime(2900, 12, 31);
+
+            var authState = await authenticationState;
+            User = authState?.User;
+            //userName = authState.User.Identity.Name;
+
+            //authState.User.IsInRole("Administrator");
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0)
+            {
+                var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+                RoleName = roleClaim.Value;
+            }
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetFunctionByRole();
+
+                await GetLeaveDataAsync();
+                await GetLeaveTypeAsync();
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+
+        //return base.OnInitializedAsync();
+    }
+
+    private async Task GetLeaveDataAsync()
+    {
+        DataSource = new List<LeaveModel>();
+        var result = await leaveService.GetAllLeaveForApproval(User.IsInRole("Administrator") ? "" : User.Identity.Name, overrideFromDate, overrideToDate);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveModel> leaves)
+            {
+                DataSource = leaves;
+                @foreach (var item in DataSource)
+                {
+                    @if (item.NumberOfDays >= 1)
+                    {
+                        item.IsMorning2 = "";
+                    }
+                    else
+                    {
+                        @if (item.NumberOfDays == 0.5M && item.IsMorning == false)
+                        {
+                            item.IsMorning2 = "Afternoon";
+                        }
+                        else
+                        {
+                            item.IsMorning2 = "Morning";
+
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+    private async Task GetLeaveTypeAsync()
+    {
+        LeaveTypeSource = new List<LeaveTypeModel>();
+        var result = await leaveTypeService.GetAllLeaveTypeByUser(User.Identity.Name);
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveTypeModel> leaveTypes)
+            {
+                LeaveTypeSource = leaveTypes;
+            }
+        }
+    }
+
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private async Task OnEditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var leave = (LeaveModel)e.EditModel;
+
+        if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.Declined)
+        {
+            if (string.IsNullOrEmpty(leave.Remark))
+            {
+                await Swal.FireAsync("Leave Decline", "Remark is required.", SweetAlertIcon.Warning);
+                return;
+            }
+        }
+
+        if (e.IsNew)
+        {
+
+        }
+        else
+        {
+            leave.ApprovedBy = User.Identity.Name;
+
+            var res = await leaveService.UpdateLeaveApprovalAsync((LeaveModel)e.DataItem, leave);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+
+                //  add time entry
+                var from = leave.LeaveFrom;
+                var to = leave.LeaveTo;
+                while (from <= to)
+                {
+                    LeaveModel leaveModel = new LeaveModel()
+                        {
+                            Username = leave.Username,
+                            LeaveTypeId = leave.LeaveTypeId,
+                            LeaveType = leave.LeaveType,
+                            LeaveFrom = from,
+                            LeaveTo = from,
+                            NumberOfDays = 8,
+                            LeaveStatus = leave.LeaveStatus,
+                            Reason = leave.Reason,
+                            AllDay = leave.AllDay,
+                            IsMorning = leave.IsMorning,
+                            Remark = leave.Remark
+                        };
+
+                    leaveService.CreateFromLeave(leaveModel);
+
+                    from = from.AddDays(1);
+                }
+
+                //  send mail
+                // commonService.LeaveSendEmail(leave);
+            }
+            else
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+
+        await GetLeaveDataAsync();
+    }
+
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+    }
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      "Leave Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+    public void OnAddNewRow()
+    {
+        Title = "Add New Leave Approval"; Grid.StartEditNewRowAsync();
+    }
+    public void OnEditRow(object DataItem)
+    {
+        LeaveModel leave = (LeaveModel)DataItem;
+        if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.Approved)
+        {
+            Title = "Approve";
+        }
+        if (leave.LeaveStatus == TDI.Utilities.Constants.LeaveStatusType.Declined)
+        {
+            Title = "Decline";
+        }
+
+        Grid.StartEditDataItemAsync(DataItem);
+    }
+    public void OnDeleteRow(object DataItem)
+    {
+        Title = "Delete Leave Approval"; Grid.ShowDataItemDeleteConfirmation(DataItem);
+    }
+}

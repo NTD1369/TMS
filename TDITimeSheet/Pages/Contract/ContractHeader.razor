@@ -1,0 +1,483 @@
+﻿@page "/ContractHeader"
+@inject ContractHeaderController ContractHeaderService
+@using System.Security.Claims;
+@inject UserController userService
+@inject CommonController commonService
+
+
+<h3>Project Set Up</h3>
+@*<button type="button" @onclick="(async ()=> await sendEmail())" class="btn btn-info">send email</button>*@
+@*kiểm tra button có insert không*@
+@*@if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+{ 
+    <button class="btn btn-success" @onclick="@(()=>Add_Contract())">Add</button>
+}*@
+
+
+@*<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Project Code</th>
+            <th>Name</th>
+            <th>StartDate</th>
+            <th>EndDate</th>
+            <th>Mandays</th>
+            <th>Project Manager</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in Contracts)
+        {
+            @if(item.Status == "A" || item.Status == "I")
+            {
+                <tr>
+                    <th>@item.ProjectCode</th>
+                    <th>@item.ContractName</th>
+                    <td>@item.StartDate.ToString("MM-dd-yyyy")</td>
+                    <td>@item.EndDate.ToString("MM-dd-yyyy")</td>
+                    <td>@item.Mandays</td>
+                    <td>@item.PM</td>
+                   
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                    {
+                        <td><button type="button" @onclick="(async ()=> await Edit_Contract(item.ContractCode))" class="btn btn-info">Edit</button></td>
+                    }
+                    
+                    <td><button type="button" @onclick="(async ()=> await NavigaToUpdateCountry(item.ContractCode, item.PM))" class="btn btn-success">Detail</button></td>
+                   
+                </tr>
+            }
+            
+        }
+    </tbody>
+</table>*@
+<DxGrid Data="Contracts" ShowSearchBox="true" style="margin-top:10px;height: calc(100vh - 19vh)"
+        KeyFieldName="ProjectCode"
+        AllowSelectRowByClick="true"
+        PageSize="20"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        ShowFilterRow="@UseShowFilterRow"
+        PopupEditFormCssClass="pw-800"
+        SizeMode="SizeMode.Medium">
+    <Columns>
+       
+        <DxGridDataColumn FieldName="ProjectCode" Caption="Project Code" MinWidth="250"/>
+        <DxGridDataColumn FieldName="ContractName" Caption="Name" MinWidth="100"/>
+        <DxGridDataColumn FieldName="StartDate" Caption="StartDate" MinWidth="80" />
+        <DxGridDataColumn FieldName="EndDate" Caption="EndDate" MinWidth="80" />
+        <DxGridDataColumn FieldName="Mandays" Caption="Mandays" MinWidth="80" />
+        <DxGridDataColumn FieldName="MandaysUsed" Caption="MandaysUsed" MinWidth="80" />
+        <DxGridDataColumn FieldName="MandaysRemain" Caption="MandaysRemain" MinWidth="80" />
+        <DxGridDataColumn FieldName="PM" Caption="Project Manager" MinWidth="80" />
+        <DxGridCommandColumn MinWidth="150">
+            <HeaderTemplate>
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                {
+                    <button class="btn btn-success" @onclick="@(()=>Add_Contract())">Add</button>
+                }
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                {
+                    <DxButton Click="() => Edit_Contract(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                }
+                @{
+                        <DxButton Click="() => NavigaToUpdateCountry(context.DataItem)" Text="Detail" RenderStyle="ButtonRenderStyle.Info" /> 
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+</DxGrid>
+@code {
+    bool UseShowFilterRow { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+    }
+    IGrid Grid { get; set; }
+
+    //List<RolePermission> detailPermissionList = new List<RolePermission>();
+
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "CONTRACTHEADER";
+
+    string RoleName = "";
+    string Title = "WBSMASTER";
+
+    public class DateWBSHeaderModel
+    {
+        public DateTime Date { get; set; }
+        public string DayOfWeek { get; set; }
+        // Mình thích thêm giá trị gì để lưu thì mình gắn vào những custom field
+        public string CustomF1 { get; set; }
+        public string CustomF2 { get; set; }
+        public string CustomF3 { get; set; }
+        public string CustomF4 { get; set; }
+        public string CustomF5 { get; set; }
+
+    } 
+    public List<DateWBSHeaderModel> viewContractHeader = new List<DateWBSHeaderModel>();
+
+    [Parameter] public int WBSId { get; set; }
+    private string Username{ get; set; }
+    private List<ContractHeaderModel> Contracts = new List<ContractHeaderModel>();
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //var authState = await authenticationState;
+
+        //Username = authState.User.Identity.Name;
+
+
+
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                Username = authState.User.Identity.Name;
+                //if (!string.IsNullOrEmpty(Username))
+                //{
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    //lấy quyền
+                    await GetFunctionByRole();
+
+                    await LoadData();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+                //}
+
+            }
+        }
+    }
+
+    private async Task LoadData()
+    {
+        DateTime fromDate = DateTime.Now; // new DateTime(1900, 01, 01);
+        DateTime toDate = DateTime.Now; // new DateTime(2023, 01, 01);
+
+        var itemWBS = await ContractHeaderService.GetContractHeader2(Username, fromDate, toDate);
+        if (itemWBS.Success == true)
+        {
+            Contracts = itemWBS.Data as List<ContractHeaderModel>;
+            StateHasChanged();
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "LoadData",
+              itemWBS.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+    //private async Task Add_Contract()
+    //{
+    //    var parameters = new ModalParameters()
+    //        .Add(nameof(ContractHeaderADD.Message), "");
+
+    //    var result = Modal.Show<ContractHeaderADD>("AddNew Contract - Project", parameters);
+
+    //}
+
+    public async Task sendEmail()
+    {
+        //await commonService.LeaveSendEmail();
+    }
+
+
+
+    public async Task Add_Contract()
+    {
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+        var parameters = new ModalParameters()
+            .Add(nameof(ContractHeaderADD.Message), "");
+        var messageForm = Modal.Show<ContractHeaderADD>("Add Project", parameters, options);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var ContractH = result.Data as ContractHeaderModel;
+            var resultAdd = await ContractHeaderService.Create(ContractH, Username);
+            if (resultAdd.Success == true)
+            {
+
+                await Swal.FireAsync(
+               "Create Project",
+               "Create Project Successfully Completed",
+               SweetAlertIcon.Success
+               );
+               
+                await LoadData();
+
+                //SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                //    {
+                //        Title = "Create Asign Member",
+                //        Text = $"Create Asign Member Successfully Completed",
+                //        Icon = SweetAlertIcon.Success,
+                //        ShowCancelButton = false,
+                //        ConfirmButtonText = $"OK",
+                //        CancelButtonText = "No"
+                //    });
+                //if (!string.IsNullOrEmpty(resultaz.Value))
+                //{
+                //    URLHelper.NavigateTo("/contractHeader", true);
+                //}
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Assign Member",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    //private async Task Edit_Contract(string ContractCode)
+    //{
+    //    var parameters = new ModalParameters()
+    //        .Add(nameof(ContractHeaderUpdate.ContractCodeID), ContractCode);
+    //    var resul = Modal.Show<ContractHeaderUpdate>("Update ContractCode - Project", parameters); 
+    //}
+    private async Task Edit_Contract(object DataItem)
+    {
+        var ctr2 = DataItem as ContractHeaderModel;
+        string ContractCode = ctr2.ContractCode;
+        var parameters = new ModalParameters()
+            .Add(nameof(ContractHeaderUpdate.ContractCodeID), ContractCode);
+
+        //var options = new ModalOptions()
+        //    {
+        //        Size = ModalSize.
+        //    };
+
+        //var parameters = new ModalParameters()
+        //    .Add(nameof(ContractHeaderUpdate.ContractCodeID), ContractCode);
+        var messageForm = Modal.Show<ContractHeaderUpdate>("Update Project", parameters);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var ContractH = result.Data as ContractHeaderModel;
+            var resultAdd = await ContractHeaderService.Update(ContractH, Username);
+            if (resultAdd.Success == true)
+            {
+
+                await Swal.FireAsync(
+               "Edit Project",
+               "Update Project Successfully Completed",
+               SweetAlertIcon.Success
+               );
+                await LoadData();
+
+                //SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                //    {
+                //        Title = "Update Asign Member",
+                //        Text = $"Update Asign Member Successfully Completed",
+                //        Icon = SweetAlertIcon.Success,
+                //        ShowCancelButton = false,
+                //        ConfirmButtonText = $"OK",
+                //        CancelButtonText = "No"
+                //    });
+                //if (!string.IsNullOrEmpty(resultaz.Value))
+                //{
+                //    URLHelper.NavigateTo("/contractHeader", true);
+                //}
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update Assign Member",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    private async Task Delete_Contract(string ContractCode)
+    {
+        //var parameters = new ModalParameters()
+        //    .Add(nameof(ContractHeaderUpdate.ContractCode), ContractCode);
+        //var resul = Modal.Show<ContractHeaderUpdate>("ContractCode - Project", parameters); 
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of Project {ContractCode} Data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await ContractHeaderService.Delete(Username, ContractCode);
+            if (resultDelete.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractHeader", true);
+                await LoadData();
+
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+
+    }
+    protected async Task NavigaToUpdateCountry(object ContractCode) 
+    {
+
+        var wbs2 = ContractCode as ContractHeaderModel; // ContractLineModel;
+
+        if (wbs2.PM != Username)
+        {
+            List<UserModel> userL;
+            var dataUser = userService.GetAllUser_List(Username);
+            if (dataUser.Result.Success == true)
+            {
+                userL = dataUser.Result.Data as List<UserModel>;
+                UserModel User1 = userL.FirstOrDefault();
+                if (User1.CountryName.ToUpper().Trim() == "ALL")
+                {
+                    URLHelper.NavigateTo("/contractHeader/" + wbs2.ContractCode);
+                }
+            }
+            
+
+            return;
+        }
+        //URLHelper.NavigateTo("/contractHeader/" + ContractCode);
+        URLHelper.NavigateTo("/contractHeader/" + wbs2.ContractCode);
+    }
+    public async void LoadUser()
+    {
+
+        List<UserModel> userL;
+        var dataUser = userService.GetAllUser_List(Username);
+        if (dataUser.Result.Success == true)
+        {
+            userL = dataUser.Result.Data as List<UserModel>;
+            UserModel User1 = userL.FirstOrDefault();
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Load Data User",
+             dataUser.Result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+    }
+
+}
+

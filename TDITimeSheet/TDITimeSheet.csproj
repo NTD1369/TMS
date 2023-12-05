@@ -1,0 +1,189 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Pages\Counter\**" />
+    <Content Remove="Pages\Counter\**" />
+    <EmbeddedResource Remove="Pages\Counter\**" />
+    <None Remove="Pages\Counter\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Pages\TimeEntry\zzzTimeEntry - Copy20230410.razor" />
+    <Content Remove="Pages\TimeEntry\zzzTimeEntryAdd - Copy20230414.razor" />
+    <Content Remove="Pages\TimeEntry\zzzTimeEntryAdds.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\assets\fonts\fontawesome-webfont.svg" />
+    <None Include="wwwroot\assets\fonts\fontawesome-webfont.woff2" />
+    <None Include="wwwroot\assets\fonts\line-awesome.svg" />
+    <None Include="wwwroot\assets\fonts\line-awesome.woff2" />
+    <None Include="wwwroot\assets\fonts\MaterialIcons-Regular.svg" />
+    <None Include="wwwroot\assets\fonts\MaterialIcons-Regular.woff2" />
+    <None Include="wwwroot\assets\js\ajaxfrm.js" />
+    <None Include="wwwroot\assets\js\app.js" />
+    <None Include="wwwroot\assets\js\bootstrap-datetimepicker.min.js" />
+    <None Include="wwwroot\assets\js\bootstrap.js" />
+    <None Include="wwwroot\assets\js\bootstrap.min.js" />
+    <None Include="wwwroot\assets\js\buttons.html5.min.js" />
+    <None Include="wwwroot\assets\js\chart.js" />
+    <None Include="wwwroot\assets\js\dataTables.bootstrap4.min.js" />
+    <None Include="wwwroot\assets\js\dataTables.buttons.min.js" />
+    <None Include="wwwroot\assets\js\dropfiles.js" />
+    <None Include="wwwroot\assets\js\fullcalendar.min.js" />
+    <None Include="wwwroot\assets\js\html5shiv.min.js" />
+    <None Include="wwwroot\assets\js\jquery-3.2.1.min.js" />
+    <None Include="wwwroot\assets\js\jquery-ui.min.js" />
+    <None Include="wwwroot\assets\js\jquery.dataTables.min.js" />
+    <None Include="wwwroot\assets\js\jquery.fullcalendar.js" />
+    <None Include="wwwroot\assets\js\jquery.maskedinput.min.js" />
+    <None Include="wwwroot\assets\js\jquery.slimscroll.js" />
+    <None Include="wwwroot\assets\js\jquery.slimscroll.min.js" />
+    <None Include="wwwroot\assets\js\jquery.ui.touch-punch.min.js" />
+    <None Include="wwwroot\assets\js\jquery.validate.min.js" />
+    <None Include="wwwroot\assets\js\jquery.validate.unobtrusive.min.js" />
+    <None Include="wwwroot\assets\js\jszip.min.js" />
+    <None Include="wwwroot\assets\js\mask.js" />
+    <None Include="wwwroot\assets\js\moment.min.js" />
+    <None Include="wwwroot\assets\js\multiselect.min.js" />
+    <None Include="wwwroot\assets\js\popper.min.js" />
+    <None Include="wwwroot\assets\js\respond.min.js" />
+    <None Include="wwwroot\assets\js\select2.min.js" />
+    <None Include="wwwroot\assets\js\task.js" />
+    <None Include="wwwroot\assets\plugins\bootstrap-tagsinput\bootstrap-tagsinput.js" />
+    <None Include="wwwroot\assets\plugins\bootstrap-tagsinput\bootstrap-tagsinput.min.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\examples\bootstrap-2.3.2\js\bootstrap.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\examples\bootstrap-2.3.2\js\bootstrap.min.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\Gruntfile.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\js\jquery.cookie.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\js\jquery.treegrid.bootstrap2.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\js\jquery.treegrid.bootstrap3.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\js\jquery.treegrid.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\js\jquery.treegrid.min.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\LICENSE" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\README.md" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\tests\qunit-1.12.0.js" />
+    <None Include="wwwroot\assets\plugins\jquery-treegrid\tests\tests.js" />
+    <None Include="wwwroot\assets\plugins\jquery\jquery.min.js" />
+    <None Include="wwwroot\assets\plugins\morris\morris.js" />
+    <None Include="wwwroot\assets\plugins\morris\morris.min.js" />
+    <None Include="wwwroot\assets\plugins\mustache\CHANGELOG.md" />
+    <None Include="wwwroot\assets\plugins\mustache\LICENSE" />
+    <None Include="wwwroot\assets\plugins\mustache\mustache.js" />
+    <None Include="wwwroot\assets\plugins\mustache\mustache.min.js" />
+    <None Include="wwwroot\assets\plugins\mustache\README.md" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\dojo\mustache.js.post" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\dojo\mustache.js.pre" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\jquery\mustache.js.post" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\jquery\mustache.js.pre" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\mootools\mustache.js.post" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\mootools\mustache.js.pre" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\qooxdoo\mustache.js.post" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\qooxdoo\mustache.js.pre" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\yui3\mustache.js.post" />
+    <None Include="wwwroot\assets\plugins\mustache\wrappers\yui3\mustache.js.pre" />
+    <None Include="wwwroot\assets\plugins\raphael\raphael.min.js" />
+    <None Include="wwwroot\assets\plugins\sticky-kit-master\dist\sticky-kit.js" />
+    <None Include="wwwroot\assets\plugins\sticky-kit-master\dist\sticky-kit.min.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ar-AR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-bg-BG.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ca-ES.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-cs-CZ.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-da-DK.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-de-DE.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-el-GR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-es-ES.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-es-EU.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-fa-IR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-fi-FI.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-fr-FR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-gl-ES.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-he-IL.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-hr-HR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-hu-HU.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-id-ID.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-it-IT.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ja-JP.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ko-KR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-lt-LT.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-lt-LV.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-mn-MN.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-nb-NO.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-nl-NL.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-pl-PL.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-pt-BR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-pt-PT.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ro-RO.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ru-RU.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-sk-SK.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-sl-SI.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-sr-RS-Latin.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-sr-RS.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-sv-SE.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-ta-IN.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-th-TH.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-tr-TR.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-uk-UA.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-uz-UZ.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-vi-VN.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-zh-CN.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\lang\summernote-zh-TW.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\plugin\databasic\summernote-ext-databasic.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\plugin\hello\summernote-ext-hello.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\plugin\specialchars\summernote-ext-specialchars.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\summernote-bs4.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\summernote-bs4.min.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\summernote-lite.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\summernote-lite.min.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\summernote.js" />
+    <None Include="wwwroot\assets\plugins\summernote\dist\summernote.min.js" />
+    <None Include="wwwroot\assets\plugins\sweetalert2\sweetalert2.all.min.js" />
+    <None Include="wwwroot\assets\plugins\toastr\toastr.js.map" />
+    <None Include="wwwroot\assets\plugins\toastr\toastr.min.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="12.0.1" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.0" />
+    <PackageReference Include="Blazored.Modal" Version="7.1.0" />
+    <PackageReference Include="CurrieTechnologies.Razor.SweetAlert2" Version="5.4.0" />
+    <PackageReference Include="DevExpress.Blazor" Version="22.2.4" />
+    <PackageReference Include="DevExpress.Document.Processor" Version="22.2.4" />
+    <PackageReference Include="DevExpress.Spreadsheet.Core" Version="22.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TDI.Application\TDI.Application.csproj" />
+    <ProjectReference Include="..\TDI.Data\TDI.Data.csproj" />
+    <ProjectReference Include="..\TDI.Utilities\TDI.Utilities.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\Templates\LeaveTemplate\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Pages\RPT\RPT_TimeEntryReport.razor">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Update="wwwroot\Templates\EmailTemplate\LeaveTemplate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\Templates\EmailTemplate\RequestWBSByUserTemplate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\Templates\EmailTemplate\RequestWBSTemplate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\Templates\LeaveTemplate\LeaveBalanceTemplate.xlsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

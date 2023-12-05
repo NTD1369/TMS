@@ -1,0 +1,396 @@
+﻿@page "/roles"
+@inject RolesController rolesService
+@using System.Security.Claims;
+<h3>Roles</h3>
+@*<button class="btn btn-success" @onclick="@(()=>showRolesAdd())">Add</button>*@
+
+@*<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+
+            <th>Name</th>
+            <th>Description</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in roles)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.Description</td>
+                <td>@item.Status</td>
+                <td><button type="button" @onclick="(async ()=> await NavigaToRoles(item.Id.ToString()))" class="btn btn-success">Assign</button></td>
+                <td><button type="button" @onclick="(async ()=> await showRolesUpdate(item.Id.ToString()))" class="btn btn-info">Edit</button></td>
+                <td><button type="button" @onclick="(async ()=> await DeleteRoles(item.Id.ToString()))"  class="btn btn-danger">Delete</button></td>
+    
+            </tr>
+        }
+    </tbody>
+</table>*@
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+
+<DxGrid Data="roles"  style="margin-top:10px;height: calc(100vh - 20vh)"
+        AllowSelectRowByClick="true"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        @*<DxGridDataColumn FieldName="Id" Caption="Id" />*@
+        <DxGridDataColumn FieldName="Name" Caption="Name" />
+        <DxGridDataColumn FieldName="Description" Caption="Description" />
+        <DxGridDataColumn FieldName="Status" Caption="Status">
+            <CellDisplayTemplate>
+                @if (context.Value != null && context.Value.ToString() == TDI.Utilities.Constants.TSStatus.Active)
+                {
+                    <span class="badge bg-inverse-success">@nameof(TDI.Utilities.Constants.TSStatus.Active)</span>
+                }
+                else
+                {
+                    <span class="badge bg-inverse-danger">@nameof(TDI.Utilities.Constants.TSStatus.InActive)</span>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+       
+        <DxGridCommandColumn Width="300px">
+            <HeaderTemplate>
+               @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+                {
+                    <button class="btn btn-success" @onclick="@(()=>showRolesAdd())">Add</button>
+
+                }
+
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    <DxButton Click="() => NavigaToRoles(context.DataItem)" Text="Detail" RenderStyle="ButtonRenderStyle.Info" />
+
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                    {
+                        <DxButton Click="() => showRolesUpdate(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+
+                    }
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                    {
+                        <DxButton Click="() =>DeleteRoles(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+
+                    }
+
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+</DxGrid>
+
+@code {
+
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "ROLE";
+    string RoleName = "";
+    string Title = "Role";
+    private List<RolesModel> roles = new List<RolesModel>();
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+
+        //if (authenticationState is not null)
+        //{
+        //    var authState = await authenticationState;
+        //    var user = authState?.User;
+        //    //Username = authState.User.Identity.Name;
+        //    //lấy roles
+        //    var Claims = authState.User.Claims;
+        //    if (Claims != null && Claims.Count() > 0)
+        //    {
+        //        var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+        //        RoleName = roleClaim.Value;
+        //    }
+        //    if (user?.Identity is not null && user.Identity.IsAuthenticated)
+        //    {
+
+        //        await LoadData();
+        //        //lấy quyền
+        //        await GetFunctionByRole();
+        //    }
+        //    else
+        //    {
+        //        URLHelper.NavigateTo("/roles", true);
+        //    }
+        //}
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    //lấy quyền
+                    await GetFunctionByRole();
+
+                    await LoadData();
+
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/roles", true);
+                }
+            }
+        }
+    }
+
+
+
+    private async Task LoadData()
+    {
+
+        var itemRoles = await rolesService.GetAll();
+        if (itemRoles.Success == true)
+        {
+            roles = itemRoles.Data as List<RolesModel>;   
+            StateHasChanged();
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Role",
+              itemRoles.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+
+    public async Task showRolesAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(RolesAdd.Message), "");
+        var messageForm = Modal.Show<RolesAdd>("Add Roles", parameters);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var rolesL = result.Data as RolesModel;
+            var resultAdd = await rolesService.Create(rolesL);
+            if (resultAdd.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create Roles",
+                        Text = $"Create Roles Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+                if (!string.IsNullOrEmpty(resultaz.Value))
+                {
+                    URLHelper.NavigateTo("/roles", true);
+                }
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create Roles",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    public async Task showRolesUpdate(object DataItem)
+    {
+        var wbs2 = DataItem as RolesModel;
+        string id = wbs2.Id.ToString();
+        var parameters = new ModalParameters()
+            .Add(nameof(RolesUpdate.roleId), id);
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Large
+            };
+
+        //var parameters = new ModalParameters()
+        //    .Add(nameof(RolesUpdate.roleId), roleId);
+
+        var messageForm = Modal.Show<RolesUpdate>("Update Roles", parameters);
+
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var rolesL = result.Data as RolesModel;
+            var resultUpdate = await rolesService.Update(rolesL);
+            if (resultUpdate.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Update Roles",
+                        Text = $"Update Roles Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+                if (!string.IsNullOrEmpty(resultaz.Value))
+                {
+                    URLHelper.NavigateTo("/roles", true);
+                }
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update Roles",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+
+    }
+    protected async Task DeleteRoles(object DataItem)
+    {
+        var wbs2 = DataItem as RolesModel;
+        string id = wbs2.Id.ToString();
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Do you want to delete Roles {wbs2.Name}?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await rolesService.Delete(id);
+            if (resultDelete.Success == true)
+            {
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+    protected async Task NavigaToRoles(object role)
+    {
+        var roleX = role as RolesModel;
+        string nameReaplace = roleX.Name.Replace("/"," ");
+        URLHelper.NavigateTo("/roles/" + roleX.Id + "/" + nameReaplace);
+    }
+
+}

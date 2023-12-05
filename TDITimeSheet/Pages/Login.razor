@@ -1,0 +1,174 @@
+﻿@page "/"
+@using System.ComponentModel.DataAnnotations;
+@using System.Globalization;
+@using static TDITimeSheet.Pages.TimeEntry.TimeEntry;
+@layout LoginLayout
+<div class="main-wrapper">
+    <div class="account-content">
+        <div class="container">
+
+            <!-- Account Logo -->
+            <div class="account-logo">
+                <img src="img/tdi_logo.png" alt="TDI Logo">
+            </div>
+            <!-- /Account Logo -->
+
+            <div class="account-box">
+                <div class="account-wrapper">
+                    <h3 class="account-title">Login</h3>
+                    @*<p class="account-subtitle">Access to our dashboard</p>*@
+
+                    <!-- Account Form -->
+                     <EditForm Model="model" OnValidSubmit="Authenticate">
+
+                        <DataAnnotationsValidator />
+                        <div class="form-group">
+                            <label>UserName</label>
+                            <DxTextBox @bind-Text="model.UserName" NullText="User" />
+
+                            @*<input @bind="model.UserName" class="form-control" placeholder="UserName" />*@
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            @*<input class="form-control" type="text">*@
+                            <DxTextBox @bind-Text="model.PassWord" NullText="Password" Password="true" />
+
+                            @*<input @bind="model.PassWord" class="form-control" placeholder="Password" Password="true" />*@
+
+                        </div>
+                        <ValidationSummary />
+                        <div class="form-group text-center">
+                            <button class="btn btn-primary account-btn" type="submit">Login</button>
+                        </div>
+
+                    </EditForm>
+                    @*<EditForm Model="model" OnValidSubmit="Authenticate">
+
+                        <DataAnnotationsValidator />
+
+
+                        <div class="row">
+                            <div class="col-lg-4 offset-lg-4 pt-4 border">
+                                <div class="mb-3 text-center">
+                                    <h3>Login</h3>
+                                </div>
+                                <div class="mb-3">
+                                    <label>UserName</label>
+                                    <input @bind="model.UserName" class="form-control" placeholder="UserName" />
+
+                                </div>
+                                <div class="mb-3">
+                                    <label>Password</label>
+                                    <input @bind="model.PassWord" class="form-control" placeholder="Password" />
+                                </div>
+                                <ValidationSummary />
+                                <div class="mb-3" d-grid gap-2>
+                                    <button>Login</button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </EditForm>*@
+                    <!-- /Account Form -->
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@*@if (showButtonSendMailTest)
+{
+
+}
+
+*@
+@*<button type="button" @onclick="(async ()=> await sendEmail())" class="btn btn-info">send email</button>*@
+
+@code {
+    public DateTime overrideStart = DateTime.Now;
+
+    private class Model
+    {
+        //[Required]
+        [Required(ErrorMessage = "UserName is required")]
+        public string UserName { get; set; }
+        //[Required]
+        [Required(ErrorMessage = "Pass is required")]
+        public string PassWord { get; set; }
+        
+
+    }
+    public bool showButtonSendMailTest = false;
+    protected override async Task OnInitializedAsync()
+    {
+        //await dateSendEmail(overrideStart);
+        //if (Env.IsDevelopment())
+        //{
+        //    model.UserName = "tuan.c";
+        //    model.PassWord = "tuan@123";
+        //    showButtonSendMailTest = true;
+        //}
+
+
+    }
+    //public async Task sendEmail()
+    //{
+    //    await commonService.WBSSendmail();
+    //}
+
+    //public async Task LeaveSendEmail()
+    //{
+    //    //var result = new GenericResult();
+    //    List<string> cc = new List<string>();
+    //    cc.Add("dat.n@tdiapj.com");
+    //    var text = "C:\\Users\\ADMIN\\source\\repos\\TDI TimeSheet 2023\\TDITimeSheet\\wwwroot\\Templates\\EmailTemplate\\LeaveTemplate.html";
+    //    string rootpath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+    //    string tempath = rootpath + "\\Templates\\EmailTemplate\\LeaveTemplate.html";
+    //    //Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().ToString());
+    //    //string text = File.ReadAllText("C:\\Users\\ADMIN\\source\\repos\\TDI TimeSheet 2023\\TDITimeSheet\\wwwroot\\Templates\\EmailTemplate\\LeaveTemplate.html");
+    //    //await _sendEmailService.SendEmailAsync("nguyentiendat.pick@gmail.com", "Leave Application no-reply", Environment.CurrentDirectory + "\\wwwroot\\Templates\\EmailTemplate\\LeaveTemplate.html", cc);
+    //    //return result;
+
+    //}
+    private Model model = new Model();
+    private async Task Authenticate()
+    {
+        try
+        {
+            var resultGetData = await userAccountService.GetUser(model.UserName, model.PassWord);
+            if (resultGetData.Success == true)
+            {
+
+                var userData = resultGetData.Data as UserAccountModel;
+                var userType = userData.UserType;
+
+                var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+                await customAuthStateProvider.UpdateAuthenticationState(new UserSession
+                    {
+                        UserName = userData.UserName,
+                        FullName = userData.FullName,
+                        UserType = userType,
+                        UserPassword = userData.UserPassword, 
+                        Role = userData.Role    // ?? "Administrator"
+                    });
+
+                navManager.NavigateTo("/index", true);
+            }
+            else
+            {
+                await Swal.FireAsync("Login", resultGetData.Message, SweetAlertIcon.Info);
+            }
+            //if (userAccount == null || userAccount.PassWord != model.PassWord)
+            //{
+            //    await js.InvokeVoidAsync("alert", "Invalid User Name or Password");
+
+            //    return;
+            //}
+        }
+        catch (Exception ex)
+        {
+            await Swal.FireAsync("Login", ex.Message, SweetAlertIcon.Error);
+        }
+    }
+   
+}

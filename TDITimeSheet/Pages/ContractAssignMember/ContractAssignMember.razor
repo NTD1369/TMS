@@ -1,0 +1,210 @@
+﻿@page "/contractAssign"
+@inject ContractAssignMemberController contractAssignService
+
+
+<h3>WBS Assign</h3>
+<button class="btn btn-success" @onclick="@(()=>showContractAdd())">Add</button>
+
+<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Project Name</th>
+            <th>WBS</th>
+            @*<th>BaseLine</th>*@
+            <th>EmployeeId</th>
+            <th>Description</th>
+            <th>StartDate</th>
+            <th>EndDate</th>
+            <th>Mandays</th>
+            <th>MandaysUpdate</th>
+            @*<th>Status</th>*@
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in contractAssignL)
+        {
+            <tr>
+                <td>@item.ContractName</td>
+                <td>@item.LineCode</td>
+                @*<td>@item.BaseLine</td>*@
+                <td>@item.EmployeeId</td>
+                <td>@item.Description</td>
+                <td>@item.StartDate.ToString("MM-dd-yyyy")</td>
+                <td>@item.EndDate.ToString("MM-dd-yyyy")</td>
+                <td>@item.Mandays</td>
+                <td>@item.MandaysUpdate</td>
+                @*<td>@item.Status</td>*@
+                <td><button type="button" @onclick="(async ()=> await ShowEditContract(item.ContractCode,item.ContractLineId,item.LineId))" class="btn btn-info">Edit</button></td>
+
+                <td><button type="button" @onclick="(async () => await DeleteContractAssignId(item.ContractCode,item.ContractLineId,item.LineId))" class="btn btn-danger">Delete</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    private string Username { get; set; }
+    private List<ContractAssignMemberModel> contractAssignL = new List<ContractAssignMemberModel>();
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState;
+        Username = authState.User.Identity.Name;
+
+        await LoadData();
+
+    }
+
+
+    private async Task LoadData()
+    {
+        DateTime fromDate = new DateTime(1900, 01, 01);
+        DateTime toDate = new DateTime(2023, 01, 01);
+
+        var itemWBS = await contractAssignService.GetContractAssign(Username, fromDate, toDate);
+        if (itemWBS.Success == true)
+        {
+            contractAssignL = itemWBS.Data as List<ContractAssignMemberModel>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Contract Assign",
+              itemWBS.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    public async Task showContractAdd()
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(AddContractAssignMember.Message), "");
+        var messageForm = Modal.Show<AddContractAssignMember>("Add Contract Assign Member", parameters);
+      
+        var result = await messageForm.Result;
+
+        if (result.Confirmed)
+        {
+            var contractAssignL = result.Data as ContractAssignMemberModel;
+            var resultAdd = await contractAssignService.Create(contractAssignL);
+            if (resultAdd.Success == true)
+            {
+                SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Create WBS Asign Member",
+                        Text = $"Create WBS Asign Member Successfully Completed",
+                        Icon = SweetAlertIcon.Success,
+                        ShowCancelButton = false,
+                        ConfirmButtonText = $"OK",
+                        CancelButtonText = "No"
+                    });
+                if (!string.IsNullOrEmpty(resultaz.Value))
+                {
+                    URLHelper.NavigateTo("/contractAssign", true);
+                }
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Create WBS Assign Member",
+                  resultAdd.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+       
+    }
+
+    private async Task ShowEditContract(string contractCode, string contractLineId, int lineId)
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(UpdateContractAssignMember.contractCode), contractCode)
+            .Add(nameof(UpdateContractAssignMember.contractLineId), contractLineId)
+            .Add(nameof(UpdateContractAssignMember.lineId), lineId);
+        var messageForm = Modal.Show<UpdateContractAssignMember>("Update WBS Assign Member", parameters);
+        var result = await messageForm.Result;
+        if (result.Confirmed)
+        {
+            var contractAssignL = result.Data as ContractAssignMemberModel;
+            //_message = result.Data.ToString();
+            var resultUpdate = await contractAssignService.Update(contractAssignL);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/ContractAssign", true);
+                await Swal.FireAsync(
+               "Update WBS Assign Member Successfully Completed",
+               "Success",
+               SweetAlertIcon.Success
+               );
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Update WBS Assign Member",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        else
+        {
+            messageForm.Close();
+        }
+    }
+
+
+    protected async Task DeleteContractAssignId(string contractCode,string contractLineId, int lineId)
+    {
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Are you sure?",
+                Text = $"Deletion of WBS Assign Member {contractLineId} Data cannot be reversed, Continue ?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = $"Yes",
+                CancelButtonText = "No"
+            });
+        //chon yes
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+
+            var resultDelete = await contractAssignService.Delete(contractCode,contractLineId, lineId);
+            if (resultDelete.Success == true)
+            {
+                //URLHelper.NavigateTo("/contractAssign", true);
+                await LoadData();
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Deleted WBS Assign Member",
+                  resultDelete.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+        //chọn no
+        else if (result.Dismiss == DismissReason.Cancel)
+        {
+            //await Swal.FireAsync(
+            //  "Cancelled",
+            //  "Your imaginary file is safe :)",
+            //  SweetAlertIcon.Error
+            //  );
+        }
+    }
+
+
+
+
+}

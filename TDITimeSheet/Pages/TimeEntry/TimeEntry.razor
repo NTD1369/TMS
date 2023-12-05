@@ -1,0 +1,1351 @@
+﻿@page "/timeEntry"
+@using System.Globalization;
+@using System.Data;
+@using TDI.Utilities.Dtos;
+@inject TimeEntryController timeEntryService
+@using System.Security.Claims;
+
+
+@* sa@787&*& *@
+
+<h3>Weekly Entry</h3>
+@*<AuthorizeView>
+    <Authorized>
+        <h1>Name: @context.User.Identity.Name</h1>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Name: Guest</h1>
+    </NotAuthorized>
+</AuthorizeView>*@
+
+<EditForm Model="timeEntry">
+    <div class="row" style="margin-top:10px">
+        <div class="col-md-2">
+            <div class="form-group">
+                <label>From</label>
+                <DxDateEdit Date="overrideStart" DateExpression="@(() => overrideStart)" PickerDisplayMode="DatePickerDisplayMode.Calendar"
+                            DateChanged="@((DateTime newValue) => OnDateChanged(newValue))" CssClass="cw-320" />
+            </div>
+        </div>
+        <div class="col-md-2"></div>
+        @*kiểm tra button có insert không*@
+        @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+        {
+            <div class="col-md-7" style="margin-top:32px;text-align:right">
+                <button class="btn btn-success" @onclick="@(()=>TimeEntryAdd_New(string.Empty,timeAdd))">Add New Line</button>
+            </div>
+            <div class="col-md-1" style="margin-top:32px">
+                <button class="btn btn-info" @onclick="@(()=>SaveDataWeekLyTimeEntry())">Save Data </button>
+            </div>
+        }
+
+
+
+    </div>
+</EditForm>
+@*<button type="button" @onclick="(async ()=> await sendEmail())" class="btn btn-info">send email</button>*@
+
+<table class="table" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th style="width:200px">Project Name</th>
+            <th>WBS</th>
+            @*<th>Phase</th>
+            <th>Task</th>*@
+            @*<th>Bilable</th>*@
+
+
+            @foreach (var item in viewTimeEntryModelHeader)
+            {
+                <th>
+                    @item.CustomF1
+                    <br />
+                    @item.DayOfWeek
+                   @* @if (item.CustomF1 == "Mon")
+                    {
+                        sendEmail();
+                    }*@
+                </th>
+            }
+            <th><span style="font-weight:bold">TOTAL</span></th>
+            <th>Comments</th>
+            @*<th>PrjCode</th>*@
+            <th></th>
+            <th></th>
+
+        </tr>
+    </thead>
+    <tbody>
+
+        @foreach (var items in RowViewTimeEntryModel)
+        {
+            <tr>
+                @if (@items.PrjCode == "ZZZ")
+                {
+                    <td>  <span style="font-weight:bold">@items.PrjName</span>  </td>
+                }
+                else
+                {
+                    <td>@items.PrjName</td>
+                }
+
+
+                <td>@items.WBSName</td>
+                @*<td>@items.Phase</td>
+            <td>@items.Task</td>*@
+                @*<td>@items.Bilable</td>*@
+
+                <td>
+
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Sun"></DxSpinEdit>
+
+                        @*<InputNumber class="form-control" @bind-Value="@items.Sun" style="font-weight:bold" readonly ></InputNumber>*@
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Sun" ValueChanged="@((float newValue) => OnValueChanged(@items.Status, @items.STT, @items.PrjCode, "Sun", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                        @*<DxSpinEdit MinValue="0" MaxValue="24" Value="@items.Sun"
+                ValueChanged ="@((float SumSunDay )=>SelectedRowViewTimeEntryModelChanged(@items.STT, @items.PrjCode, null, "Sun", @items.ContractLineId, @items.Comments, @items.Sun))"></DxSpinEdit>
+                *@
+                        @*
+                <DxSpinEdit MinValue="0" MaxValue="24" Value="@items.Sun"
+                ValueChanged="@((float SumSunDay)=>TxtHourChange(@items.PrjCode, null, "Sun", @items.ContractLineId, @items.Comments))"></DxSpinEdit>*@
+
+                    }
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        @*<InputNumber class="form-control" @bind-Value="@items.Mon" style="font-weight:bold" readonly ></InputNumber>*@
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Mon"></DxSpinEdit>
+
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Mon" ValueChanged="@((float newValue) => OnValueChanged(@items.Status,@items.STT, @items.PrjCode, "Mon", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                    }
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Tue"></DxSpinEdit>
+
+
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Tue" ValueChanged="@((float newValue) => OnValueChanged(@items.Status,@items.STT, @items.PrjCode, "Tue", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                    }
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Wed"></DxSpinEdit>
+                        @*<InputNumber class="form-control" @bind-Value="@items.Wed" style="font-weight:bold" readonly></InputNumber>*@
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Wed" ValueChanged="@((float newValue) => OnValueChanged(@items.Status,@items.STT, @items.PrjCode, "Wed", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                    }
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        @*<InputNumber class="form-control" @bind-Value="@items.Thu" style="font-weight:bold" readonly></InputNumber>*@
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Thu"></DxSpinEdit>
+
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Thu" ValueChanged="@((float newValue) => OnValueChanged(@items.Status,@items.STT, @items.PrjCode, "Thu", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                    }
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        @*<InputNumber class="form-control" @bind-Value="@items.Fri" style="font-weight:bold" readonly></InputNumber>*@
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Fri"></DxSpinEdit>
+
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Fri" ValueChanged="@((float newValue) => OnValueChanged(@items.Status,@items.STT, @items.PrjCode, "Fri", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                    }
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2)
+                    {
+                        @*<InputNumber class="form-control" @bind-Value="@items.Sat" style="font-weight:bold" readonly></InputNumber>*@
+                        <DxSpinEdit ShowSpinButtons="false" Enabled="false" MinValue="0" MaxValue="24" Value="@items.Sat"></DxSpinEdit>
+
+                    }
+                    else
+                    {
+                        //kiem tra thu tong theo ngay co bi trung ko?
+                        <DxSpinEdit ShowSpinButtons="false" MinValue="0" MaxValue="24" Value="@items.Sat" ValueChanged="@((float newValue) => OnValueChanged(@items.Status,@items.STT, @items.PrjCode, "Sat", @items.ContractLineId, newValue))"></DxSpinEdit>
+
+                    }
+                </td>
+
+
+                <td>
+                    @{
+                        SumHourbyPrj = (items.Mon + items.Tue + items.Wed + items.Thu + items.Fri + items.Sat + items.Sun);
+                        <InputNumber class="form-control" @bind-Value="@SumHourbyPrj" style="font-weight:bold" readonly></InputNumber>
+                        //if (@items.PrjCode == "ZZZ")
+                        //{
+                        //    <InputNumber class="form-control" @bind-Value="@SumHourbyPrj" style="font-weight:bold" readonly></InputNumber>
+                        //}
+                        //else
+                        //{
+                        //    //kiem tra thu tong theo ngay co bi trung ko?
+                        //        <DxSpinEdit ShowSpinButtons="false" Value="@SumHourbyPrj" readonly></DxSpinEdit>
+
+                        //}
+
+                    }
+                </td>
+
+                <td>
+                    @if (@items.PrjCode == "ZZZ") { }
+                    else
+                    {
+                        @if (items.Status == 1 || items.Status == 2)
+                        {
+                            <InputText Value="@items.Comments" readonly ="true" ValueExpression="@( () => items.Comments )"
+                           ValueChanged="@((string newValue) => OnValueChanged_Comments(@items.Status,@items.STT, @items.PrjCode, @items.ContractLineId, newValue))"></InputText>
+                        }
+                        else
+                        {
+                            <InputText Value="@items.Comments" ValueExpression="@( () => items.Comments )"
+                            ValueChanged="@((string newValue) => OnValueChanged_Comments(@items.Status,@items.STT, @items.PrjCode, @items.ContractLineId, newValue))"></InputText>
+                        }
+                        
+                    }
+                </td>
+                @*<td>@items.PrjName</td>*@
+
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2) { }
+                    else
+                    {
+                        <button class="btn btn-danger" style="margin-left:5px" @onclick="@(()=>DeleteWeekLyTimeEntry(@items.STT, @items.PrjCode, @items.ContractLineId))"><i class="la la-trash"></i></button>
+                    }
+
+                </td>
+                <td>
+                    @if (@items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2) { }
+                    else
+                    {
+                        <button class="btn btn-info" style="margin-left:5px" @onclick="@(()=>AddWeekLyTimeEntry_CopyLine(@items.STT, @items.PrjCode, @items.ContractLineId))"><i class="la la-plus"></i></button>
+                    }
+
+                </td>
+
+            </tr>
+
+        }
+    </tbody>
+
+</table>
+
+
+
+@code {
+
+    List<RolePermission> permissionList = new List<RolePermission>();
+    string Function = "WEEKLYENTRY";
+    string RoleName = "";
+    string Title = "WEEKLYENTRY";
+
+    public float SumHourbyPrj;
+    public class DateHeaderModel
+    {
+        public DateTime Date { get; set; }
+        public string DayOfWeek { get; set; }
+        // Mình thích thêm giá trị gì để lưu thì mình gắn vào những custom field
+        public string CustomF1 { get; set; }
+        public string CustomF2 { get; set; }
+        public string CustomF3 { get; set; }
+        public string CustomF4 { get; set; }
+        public string CustomF5 { get; set; }
+
+    }
+
+    public class RowKeyModel
+    {
+        public string ProjectCode { get; set; }
+        public string Phase { get; set; }
+        public string Task { get; set; }
+        public string Comments { get; set; }
+        public int Status { get; set; }
+        public string ProjectName { get; set; } // Thêm vào để test
+        public string WBSName { get; set; } // Thêm vào để test
+        public string ContractLineId { get; set; } // Thêm vào để test
+
+    }
+    void OnDateChanged(DateTime newValue)
+    {
+        overrideStart = newValue.Date;
+        timeAdd = newValue.Date;
+        filterDay(overrideStart);
+
+    }
+    private DateTime timeAdd = DateTime.Now; int Status = 0;
+    public DateTime overrideStart = DateTime.Now;
+    //public string convertOverrideStart = overrideStart.ToString("dd/MM/yyyy");
+
+
+    public List<TimeEntryModel> timeEntry = new List<TimeEntryModel>();
+    public List<ViewTimeEntryModel> viewTimeEntryModel = new List<ViewTimeEntryModel>();
+
+    //public List<ViewTimeEntryModel> viewTimeEntryModelHeader = new List<ViewTimeEntryModel>();
+    public List<DateHeaderModel> viewTimeEntryModelHeader = new List<DateHeaderModel>();
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    public List<ViewTimeEntryModel> RowViewTimeEntryModel = new List<ViewTimeEntryModel>();
+    public List<ViewTimeEntryModel> RowViewTimeEntryModel_Current = new List<ViewTimeEntryModel>();
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    public async Task SelectStartOfWeek(ChangeEventArgs args)
+    {
+        var value = args.Value.ToString();
+        overrideStart = value == string.Empty ? DateTime.Today : DateTime.Parse(value);
+
+        //overrideStart = await GetStartOfWeek(overrideStart);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    //lấy quyền
+                    await GetFunctionByRole();
+
+
+                    DateTime myDate = DateTime.Today;
+                    LoadData(myDate, null);
+
+                    //sau khi load thi co cai hien tai - luc addnew delete /edit phai update cai hien tai
+                    RowViewTimeEntryModel_Current = RowViewTimeEntryModel;
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+            }
+        }
+    }
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+
+    //private async Task<DateTime> GetStartOfWeek(DateTime date)
+    //{
+    //    return date.AddDays(-(int)date.DayOfWeek);
+    //}
+    public DateHeaderModel TraVeNgayTuNgayTrongTuan(string ngaytrongtuan)
+    {
+
+        DateHeaderModel result = viewTimeEntryModelHeader.Where(x => x.CustomF1.StartsWith(ngaytrongtuan)).FirstOrDefault();
+        return result;
+    }
+
+    //public async void ShowDetailAdd(string projectCode, string ngayTrongTuan)
+    //{
+    //    var NgayGet = TraVeNgayTuNgayTrongTuan(ngayTrongTuan);
+    //    if(NgayGet!=null)
+    //    {
+    //        showTimeEntryAdd(projectCode,NgayGet.Date);
+    //    }
+    //    else
+    //    {
+    //        showTimeEntryAdd(projectCode,DateTime.Now);
+    //    }
+    //}
+
+    void SelectedRowViewTimeEntryModelChanged(int STT, string projectCode, DateTime? ngay, string ngaytrongtuan, string ContractLineId, string Comments, float ValueChange)
+    //(ViewTimeEntryModel RowViewTimeEntryModel)
+    {
+        //RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.Comments == C && x.Comments == comment && x.ContractLineId == ContractLineId) = SumSunDay;
+
+        //var newModel = listProject.Where(x => x.ProjectCode == projecCode && x.Phase == phase && x.Task == task && x.Comments == comment && x.ContractLineId == ContractLineId);
+
+        //ViewTimeEntryModel result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.Comments == Comments && x.ContractLineId == ContractLineId).FirstOrDefault();
+
+        DataRow[] rupdate = dt.Select("STT=" + STT.ToString());
+        if (rupdate.Length > 0)
+        {
+            if (ngaytrongtuan == "Sun")
+            {
+                rupdate[0]["Sun"] = ValueChange;
+            }
+            if (ngaytrongtuan == "Mon")
+            {
+                rupdate[0]["Mon"] = ValueChange;
+            }
+            if (ngaytrongtuan == "Tue")
+            {
+                rupdate[0]["Tue"] = ValueChange;
+            }
+        }
+        foreach (DataRow row in dt.Rows)
+        {
+            if (row["STT"].ToString() == STT.ToString())
+            {
+                if (ngaytrongtuan == "Sun") { row.SetField("Sun", ValueChange); break; }
+
+            }
+
+        }
+
+        float SumHour = 0; float SumSunDay = 0; float SumMonDay = 0;
+        foreach (DataRow dr in dt.Rows)
+        {
+            SumSunDay = SumSunDay + float.Parse(dr["Sun"].ToString());
+            if (SumSunDay > 20)
+            { Swal.FireAsync("SunDay", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return; }
+
+            SumMonDay = SumMonDay + float.Parse(dr["Mon"].ToString());
+            if (SumMonDay > 20)
+            { Swal.FireAsync("MonDay", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return; }
+
+
+        }
+
+        //foreach (var items in RowViewTimeEntryModel)
+        //{
+        //    if (items.PrjCode == "ZZZ") //ko lam j vs ham tong
+        //    {
+        //    }
+        //    else
+        //    {
+        //        if (ngaytrongtuan == "Sun")
+        //        {
+        //            SumSunDay = SumSunDay + items.Sun;
+        //        }
+        //        if (ngaytrongtuan == "Mon")
+        //        {
+        //            SumMonDay = SumMonDay + items.Sun;
+        //        }
+
+
+        //    }
+        //}
+        //if (ngaytrongtuan == "Sun" && SumSunDay + ValueChange > 20)
+        //{     Swal.FireAsync( "SunDay", " Please Add TOTAL = 8 hour/manday", SweetAlertIcon.Error);return; }
+        //if (ngaytrongtuan == "Mon" && SumSunDay + ValueChange > 20)
+        //{ Swal.FireAsync("Monday", " Please Add TOTAL = 8 hour/manday", SweetAlertIcon.Error); return; }
+
+
+        //DataRow[] rupdate = dt.Select("STT=" + STT.ToString());
+        //if (rupdate.Length > 0)
+        //{
+        //    if (ngaytrongtuan == "Sun")
+        //    {
+        //        rupdate[0]["Sun"] = newValue;
+        //    }
+        //    if (ngaytrongtuan == "Mon")
+        //    {
+        //        rupdate[0]["Mon"] = newValue;
+        //    }
+        //    if (ngaytrongtuan == "Tue")
+        //    {
+        //        rupdate[0]["Tue"] = newValue;
+        //    }
+        //}
+
+    }
+
+
+    void OnValueChanged_Comments(int Status, int STT, string projectCode, string ContractLineId, string newValue)
+    {
+        ViewTimeEntryModel result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.STT == STT && x.Status == Status).FirstOrDefault();
+        result_Change.Comments = newValue;
+
+    }
+
+    void OnValueChanged(int Status, int STT, string projectCode, string ngaytrongtuan, string ContractLineId, float newValue)
+    {
+
+        ViewTimeEntryModel result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.STT == STT && x.Status == Status).FirstOrDefault();
+        if (ngaytrongtuan == "Sun") { result_Change.Sun = newValue; }
+        if (ngaytrongtuan == "Mon") { result_Change.Mon = newValue; }
+        if (ngaytrongtuan == "Tue") { result_Change.Tue = newValue; }
+        if (ngaytrongtuan == "Wed") { result_Change.Wed = newValue; }
+        if (ngaytrongtuan == "Thu") { result_Change.Thu = newValue; }
+        if (ngaytrongtuan == "Fri") { result_Change.Fri = newValue; }
+        if (ngaytrongtuan == "Sat") { result_Change.Sat = newValue; }
+
+        Check_SumHourOnDay(result_Change, ngaytrongtuan);
+
+    }
+    void Check_SumHourOnDay(ViewTimeEntryModel result_Change, string ngaytrongtuan)
+    {
+        float SumSunDay = 0; float SumMonDay = 0; float SumTue = 0; float SumWed = 0; float SumThu = 0; float SumFri = 0; float SumSat = 0;
+        foreach (var items in RowViewTimeEntryModel)
+        {
+            if (items.PrjCode == "ZZZ") //ko lam j vs ham tong
+            {
+            }
+            else
+            {
+                if (ngaytrongtuan == "Sun")
+                {
+                    SumSunDay = SumSunDay + items.Sun;
+                }
+                if (ngaytrongtuan == "Mon")
+                {
+                    SumMonDay = SumMonDay + items.Mon;
+                }
+                if (ngaytrongtuan == "Tue")
+                {
+                    SumTue = SumTue + items.Tue;
+                }
+                if (ngaytrongtuan == "Wed")
+                {
+                    SumWed = SumWed + items.Wed;
+                }
+                if (ngaytrongtuan == "Thu")
+                {
+                    SumThu = SumThu + items.Thu;
+                }
+                if (ngaytrongtuan == "Fri")
+                {
+                    SumFri = SumFri + items.Fri;
+                }
+                if (ngaytrongtuan == "Sat")
+                {
+                    SumSat = SumSat + items.Sat;
+                }
+
+
+            }
+        }
+        if (ngaytrongtuan == "Sun")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Sun = SumSunDay;
+            if (SumSunDay > 20)
+            {
+                //result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.STT == STT).FirstOrDefault();
+                //result_Change.Sun = 0; //gan lai vi bi sai
+
+                Swal.FireAsync("SunDay", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+            //else
+            //{
+            //    result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            //    result_Change.Sun = SumSunDay;
+            //}
+        }
+        if (ngaytrongtuan == "Mon")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Mon = SumMonDay;
+            if (SumMonDay > 20)
+            {
+                Swal.FireAsync("MonDay", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+        }
+        if (ngaytrongtuan == "Tue")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Tue = SumTue;
+            if (SumTue > 20)
+            {
+                Swal.FireAsync("TuesDay", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+        }
+        if (ngaytrongtuan == "Wed")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Wed = SumWed;
+            if (SumWed > 20)
+            {
+                Swal.FireAsync("Wednesday", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+        }
+        if (ngaytrongtuan == "Thu")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Thu = SumThu;
+            if (SumThu > 20)
+            {
+                Swal.FireAsync("Thursday", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+        }
+        if (ngaytrongtuan == "Fri")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Fri = SumFri;
+            if (SumFri > 20)
+            {
+                Swal.FireAsync("Friday", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+        }
+        if (ngaytrongtuan == "Sat")
+        {
+            result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == "ZZZ").FirstOrDefault();
+            result_Change.Sat = SumSat;
+            if (SumSat > 20)
+            {
+                Swal.FireAsync("Saturday", " Hour summary of time entry in day can not greater than 8 hours", SweetAlertIcon.Error); return;
+            }
+        }
+
+
+    }
+
+    private DataTable dt;
+    public void CreateDt() //(string projectCode, DateTime? ngay, string ngaytrongtuan, string ContractLineId, string Comments)
+    {
+        try
+        {
+            dt = new DataTable("WeeklyEntry");
+            dt.Columns.Add("STT", typeof(int));   //is key
+                                                  //dt.Columns.Add("DayOfWeek", typeof(string));
+            dt.Columns.Add("PrjCode", typeof(string));
+            dt.Columns.Add("ContractLineId", typeof(string));
+            dt.Columns.Add("Comments", typeof(string));
+
+            dt.Columns.Add("Sun", typeof(float));
+            dt.Columns.Add("Mon", typeof(float));
+            dt.Columns.Add("Tue", typeof(float));
+            dt.Columns.Add("Wed", typeof(float));
+            dt.Columns.Add("Thu", typeof(float));
+            dt.Columns.Add("Fri", typeof(float));
+            dt.Columns.Add("Sat", typeof(float));
+        }
+        catch (Exception ex)
+        { }
+        try
+        {
+            dt.Rows.Clear();
+            DataRow row = null;
+            foreach (var items in RowViewTimeEntryModel)
+            {
+                row = dt.NewRow();
+                row["STT"] = items.STT;   //is key
+
+                row["PrjCode"] = items.PrjCode;
+                row["ContractLineId"] = items.ContractLineId;
+                row["Comments"] = items.Comments;
+
+                row["Sun"] = items.Sun;
+                row["Mon"] = items.Mon;
+                row["Tue"] = items.Tue;
+                row["Wed"] = items.Wed;
+                row["Thu"] = items.Thu;
+                row["Fri"] = items.Fri;
+                row["Sat"] = items.Sat;
+
+
+                dt.Rows.Add(row);
+            }
+        }
+        catch (Exception ex)
+        { }
+    }
+
+
+    public async void ShowDetail(string projectCode, DateTime? ngay, string ngaytrongtuan, string ContractLineId, string Comments)
+    {
+        var NgayGet = TraVeNgayTuNgayTrongTuan(ngaytrongtuan);
+        if (NgayGet != null)
+        {
+            ngay = NgayGet.Date;
+        }
+        var authState = await authenticationState;
+        // var timeEntryInProject = timeEntry.Where(x => x.PrjCode == newRow.PrjCode && x.Phase== newRow.Phase && x.Task == newRow.Task && x.Comments== newRow.Comments && x.WBSName== newRow.WBSName).ToList();
+
+        var resultGetDetail = await timeEntryService.GetTimeEntryWithoutId(authState.User.Identity.Name, ngay.Value, projectCode, ContractLineId, Comments, Status);  //lay theo group Fillter ko theo ID
+                                                                                                                                                                      //var parameters = new ModalParameters()
+                                                                                                                                                                      //      .Add(nameof(UpdateTimeEntry.PrjCode), projectCode).Add(nameof(UpdateTimeEntry.DateTimeEntry), ngay).Add(nameof(UpdateTimeEntry.NgayTrongTuan),ngaytrongtuan);
+        var parameters = new ModalParameters()
+              .Add(nameof(UpdateTimeEntry.timeEntryUpdate), resultGetDetail.Data);
+        var resulModal = Modal.Show<UpdateTimeEntry>("Update TimeEntry", parameters);
+
+        //show popup khi update thành công : OK
+        var result = await resulModal.Result;
+        if (result.Confirmed)
+        {
+            await Swal.FireAsync("Update Success", "OK", SweetAlertIcon.Success);
+            var countryResult = result.Data as GenericResult;
+            LoadData(overrideStart, null);
+
+            StateHasChanged();
+            //await  Swal.FireAsync("test", "OK", SweetAlertIcon.Success);
+        }
+        //else
+        //{
+        //    await Swal.FireAsync("test", "test model", SweetAlertIcon.Error);
+        //}
+
+        //resul.Result
+    }
+
+
+    public async void LoadData(DateTime myDate, TimeEntryModel timeEntry0)
+    {
+
+        //Đầu tiên là tạo ra header ngày tháng trong bảng
+        #region Tạo ngày tháng trong header bảng theo ngày filter
+
+        IEnumerable<DateTime> ngayTrongTuan = GetDatesOfWeek(myDate, CultureInfo.CurrentCulture);
+
+        viewTimeEntryModelHeader = new List<DateHeaderModel>();
+        foreach (DateTime ngay in ngayTrongTuan)
+        {
+            DateHeaderModel autoColumn = new DateHeaderModel();
+            autoColumn.Date = ngay;
+            autoColumn.DayOfWeek = ngay.ToString("dd-MM-yyyy");
+            autoColumn.CustomF1 = ngay.ToString("ddd");
+            //autoColumn.CustomF2 = ngay.ToString("ddd,hh:mm tt");
+            viewTimeEntryModelHeader.Add(autoColumn);
+        }
+        
+        #endregion
+
+        #region Lấy dữ liệu time Entry từ data base lên và xử lý lên view
+        var authState = await authenticationState;
+        var timeEnt = await timeEntryService.GetTimeEntry(authState.User.Identity.Name, viewTimeEntryModelHeader.FirstOrDefault().Date, viewTimeEntryModelHeader.LastOrDefault().Date, Status);
+        if (timeEnt.Success == true)
+        {
+            timeEntry = timeEnt.Data as List<TimeEntryModel>;
+            // if (time)
+            //{
+            //    await Swal.FireAsync(
+            //      "Error TimeEntry",
+            //      "Số giờ không lớn hơn 8",
+            //      SweetAlertIcon.Error
+            //      );
+            //}
+            //chuỗi: "avc nge" nvarchar(50) '',''
+            // kí tự: 'k' char(1)
+            //if(string!==null string !==undefined !== string !=='')
+            // String.IsNullOrEmpty(string) kiểm tra chuỗi có bị rỗng hay không
+            //viewTimeEntryModel = viewTimeEntryModel.Where(x => string.IsNullOrEmpty(x.PrjCode) == false).ToList();
+
+            //cách 1 bộ key chỉ là 1 chuổi string chẳng hạn như nó là Project Code chẳng hạn
+            //var listProject = new List<String>();
+
+            //foreach(var data in timeEntry)
+            //{
+
+            //    string projecCode = data.PrjCode;
+            //    var newModel = listProject.Where(x => x == projecCode);
+            //    if(newModel != null && newModel.Count() > 0)
+            //    {
+
+            //    }
+            //    else
+            //    {
+            //        listProject.Add(data.PrjCode);
+
+            //    }
+
+            //}
+
+            //cách 2 dùng model để xác định khóa chính
+            // Bộ khóa chính gồm ProjectCode, Phase, Task, Comments những cột này sẽ đưa đi tạo thành Model
+
+            var listProject = new List<RowKeyModel>();
+
+            if (timeEntry0 != null) //copy new line
+            {
+                var newRowInsert = new RowKeyModel();
+                newRowInsert.ProjectCode = timeEntry0.PrjCode;
+                newRowInsert.ProjectName = timeEntry0.PrjName;
+                newRowInsert.Phase = timeEntry0.Phase;
+                newRowInsert.Task = timeEntry0.Task;
+                newRowInsert.Comments = timeEntry0.Comments;
+                newRowInsert.Status = timeEntry0.Status;
+                newRowInsert.WBSName = timeEntry0.WBSName;
+                newRowInsert.ContractLineId = timeEntry0.ContractLineId;
+
+                listProject.Add(newRowInsert);
+            }
+
+            //Lặp từng dòng trong Time Entry và kiểm tra xem có bao nhiêu bộ key trong dữ liệu trả về
+            foreach (var data in timeEntry)
+            {
+                // Lấy dữ liệu của 1 dòng time Entry ra và gắn vào string để dễ debug và xem dữ liệu
+                string projecCode = data.PrjCode;
+                string projecName = data.PrjName;
+                string phase = data.Phase;
+                string task = data.Task;
+                string comment = data.Comments;
+                int status = data.Status;
+                string WbsName = data.WBSName;
+                string ContractLineId = data.ContractLineId;
+                // Kiểm tra xem trong cái list key có tồn tại hay không
+                var newModel = listProject.Where(x => x.ProjectCode == projecCode && x.Phase == phase && x.Task == task && x.Comments == comment && x.ContractLineId == ContractLineId && x.Status == status);
+                //Nếu tồn tại thì k làm gì hết ngược lại thì tạo model mới và add vào List để chạy hàng
+                if (newModel != null && newModel.Count() > 0)
+                {
+
+                }
+                else
+                {
+                    //tạo model mới và add vào List để chạy hàng
+                    var newRowInsert = new RowKeyModel();
+                    newRowInsert.ProjectCode = projecCode;
+                    newRowInsert.ProjectName = projecName;
+                    newRowInsert.Phase = phase;
+                    newRowInsert.Task = task;
+                    newRowInsert.Comments = comment;
+                    newRowInsert.Status = status;
+                    newRowInsert.WBSName = WbsName;
+                    newRowInsert.ContractLineId = ContractLineId;
+
+                    listProject.Add(newRowInsert);
+
+                }
+
+
+
+            }
+
+
+
+            // Tạo ra 1 list danh sách hàng cần hiển thị
+            RowViewTimeEntryModel = new List<ViewTimeEntryModel>();
+
+            //Chạy cái list danh sách dòng bộ key mình mới tạo bên trên
+            int STT = 0;
+            foreach (var rowKey in listProject)
+            {
+                //Tạo 1 dòng hiển thị mới
+                var newRow = new ViewTimeEntryModel();
+                STT = STT + 1;
+                if (rowKey.ProjectCode == "ZZZ") { STT = 999; }
+                // gắn giá trị vào từng cột mình cần hiển thị
+                newRow.PrjCode = rowKey.ProjectCode;
+                newRow.PrjName = rowKey.ProjectName ?? rowKey.ProjectName;
+                newRow.Phase = rowKey.Phase;
+                newRow.Task = rowKey.Task;
+                newRow.Comments = rowKey.Comments;
+                newRow.Status = rowKey.Status;
+                newRow.WBSName = rowKey.WBSName;
+                newRow.ContractLineId = rowKey.ContractLineId;
+                newRow.STT = STT;
+                newRow.CommentsDB = rowKey.Comments; //cai nay vs projectcode + ContractLineId + CommentsDB la key o trong database
+
+                //Lấy ra danh sách những dòng chấm công có liên quan với bộ row key
+                var timeEntryInProject = timeEntry.Where(x => x.PrjCode == newRow.PrjCode && x.Phase == newRow.Phase && x.Task == newRow.Task && x.Comments == newRow.Comments && x.ContractLineId == newRow.ContractLineId && x.Status == newRow.Status).ToList();
+                foreach (var timeEntryModel in timeEntryInProject)
+                {
+                    // Lấy ra ngày trong tuần chẳng hạn thứ 2(Mon), thứ 3(Tue)......
+                    string ngaytrongTuan = timeEntryModel.Date.DayOfWeek.ToString();
+
+                    // Kiểm tra ngày trên header có phù hợp với ngày trong dòng chấm công không.
+                    var kiemTraNgay = viewTimeEntryModelHeader.Where(x => x.Date.Date == timeEntryModel.Date);
+
+                    // Nếu có thì sẽ chạy vào kiểm tra
+                    if (kiemTraNgay != null && kiemTraNgay.Count() > 0)
+                    {
+                        // nếu ngày trong tuần = t2 thì cộng số giờ vào
+
+                        if (ngaytrongTuan == DayOfWeek.Monday.ToString())// ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Mon)))
+                        {
+                            newRow.Mon += timeEntryModel.Hour;
+                        }
+                        // nếu ngày trong tuần = t3 thì cộng số giờ vào
+                        if (ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Tue)))
+                        {
+                            newRow.Tue += timeEntryModel.Hour;
+                        }
+                        if (ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Wed)))
+                        {
+                            newRow.Wed += timeEntryModel.Hour;
+                        }
+                        if (ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Thu)))
+                        {
+                            newRow.Thu += timeEntryModel.Hour;
+                        }
+                        if (ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Fri)))
+                        {
+                            newRow.Fri += timeEntryModel.Hour;
+                        }
+                        if (ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Sat)))
+                        {
+                            newRow.Sat += timeEntryModel.Hour;
+                        }
+                        if (ngaytrongTuan.StartsWith(nameof(ViewTimeEntryModel.Sun)))
+                        {
+                            newRow.Sun += timeEntryModel.Hour;
+                        }
+                    }
+
+
+                }
+
+
+                // Sau khi set giá trị xong thì add vào trong view
+                RowViewTimeEntryModel.Add(newRow);
+
+            }
+
+            StateHasChanged();
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+            "Load Data timeEntry",
+            timeEnt.Message,
+            SweetAlertIcon.Error
+            ); return;
+        }
+        #endregion
+
+    }
+
+    public IEnumerable<DateTime> GetDatesOfWeek(DateTime date, CultureInfo ci)
+    {
+        Int32 firstDayOfWeek = (Int32)ci.DateTimeFormat.FirstDayOfWeek;
+        Int32 dayOfWeek = (Int32)date.DayOfWeek;
+        DateTime startOfWeek = date.AddDays(firstDayOfWeek - dayOfWeek);
+        var valuesDaysOfWeek = Enum.GetValues(typeof(DayOfWeek)).Cast<Int32>();
+        return valuesDaysOfWeek.Select(v => startOfWeek.AddDays(v));
+    }
+
+    protected async Task filterDay(DateTime overrideStart)
+    {
+
+        LoadData(overrideStart, null);
+    }
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    public async Task TimeEntryAdd_New(string projectCode, DateTime timeAdd)
+    {
+        var parameters = new ModalParameters()
+            .Add(nameof(TimeEntryAdd.timeAdd), timeAdd)
+            .Add(nameof(TimeEntryAdd.projectCode), projectCode);
+
+        var options = new ModalOptions()
+            {
+                Size = ModalSize.Small,
+                
+
+                
+            };
+
+        var resulForm = Modal.Show<TimeEntryAdd>("Add Time Entry", parameters, options);
+        //resul.Result
+        var result = await resulForm.Result;
+
+        LoadData(overrideStart, null);
+        if (result.Confirmed)
+        {
+            //var contractAssignL = result.Data as ContractAssignMemberModel;
+            //var resultAdd = await contractAssignService.Create(contractAssignL);
+            //if (resultAdd.Success == true)
+            //{
+            //    SweetAlertResult resultaz = await Swal.FireAsync(new SweetAlertOptions
+            //        {
+            //            Title = "Create Contract Asign Member",
+            //            Text = $"Create Contract Asign Member Successfully Completed",
+            //            Icon = SweetAlertIcon.Success,
+            //            ShowCancelButton = false,
+            //            ConfirmButtonText = $"OK",
+            //            CancelButtonText = "No"
+            //        });
+            //    if (!string.IsNullOrEmpty(resultaz.Value))
+            //    {
+            //        URLHelper.NavigateTo("/contractAssign", true);
+            //    }
+            //}
+            //else
+            //{
+            //    await Swal.FireAsync(
+            //      "Create Contract Assign Member",
+            //      resultAdd.Message,
+            //      SweetAlertIcon.Error
+            //      );
+            //}
+        }
+        else
+        {
+            resulForm.Close();
+        }
+
+    }
+
+    //private async Task showUpdateTimeEntry(int id)
+    //{
+    //    var parameters = new ModalParameters()
+    //        .Add(nameof(UpdateTimeEntry.PrjCode), id);
+    //    var resul = Modal.Show<UpdateTimeEntry>("Update TimeEntry", parameters);
+    //    //resul.Result
+    //}
+
+    private void CancelAdd()
+    {
+        URLHelper.NavigateTo("/timeEntry");
+
+    }
+
+
+
+    public async void DeleteWeekLyTimeEntry(int Stt, string projectCode, string ContractLineId)
+    {
+        ViewTimeEntryModel result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.STT == Stt).FirstOrDefault();
+
+        //if (timeEntry.Hour > 20)
+        //{
+        //    await Swal.FireAsync(
+        //      "Error",
+        //      "Please Update Hour <= 8 Hour/manday",
+        //      SweetAlertIcon.Error
+        //      );
+        //    return;
+        //}
+
+        var authState = await authenticationState;
+        var resultAdd = await timeEntryService.DeleteWeekLyTimeEntry(Stt, authState.User.Identity.Name, projectCode, ContractLineId, result_Change.CommentsDB); //do comment co the thay doi, con commentsDO ko edit.
+
+
+        //show popup khi update thành công : OK
+        if (resultAdd.Success == true)
+        {
+            await Swal.FireAsync("Delete Success", "OK", SweetAlertIcon.Success);
+
+            LoadData(overrideStart, null);
+
+            StateHasChanged();
+            //await  Swal.FireAsync("test", "OK", SweetAlertIcon.Success);
+        }
+        else
+        {
+            await Swal.FireAsync("Can not Delete", "Error", SweetAlertIcon.Error);
+        }
+
+        ////resul.Result
+    }
+
+    public async void AddWeekLyTimeEntry_CopyLine(int Stt, string projectCode, string ContractLineId)
+    {
+        var authState = await authenticationState;
+        //kiem tra co bi > 20h/ngay ko.
+        foreach (var items in RowViewTimeEntryModel)
+        {
+            if (items.PrjCode == "ZZZ") //ko lam j vs ham tong
+            {
+                if (items.Hour > 20 || items.Mon > 20 || items.Tue > 20 || items.Wed > 20 || items.Thu > 20 || items.Fri > 20 || items.Sat > 20 || items.Sun > 20)
+                { Swal.FireAsync("Total 1Day", " Please Add TOTAL = 8 hour/manday", SweetAlertIcon.Error); return; }
+            }
+        }
+
+        ViewTimeEntryModel result_Change = RowViewTimeEntryModel.Where(x => x.PrjCode == projectCode && x.ContractLineId == ContractLineId && x.STT == Stt).FirstOrDefault();
+        if (result_Change.Mon + result_Change.Tue + result_Change.Wed + result_Change.Thu + result_Change.Fri + result_Change.Sat + result_Change.Sun == 0)
+        { Swal.FireAsync("AddNewLine", " Cannot Add beacause this line not input data.", SweetAlertIcon.Error); return; }
+        if (result_Change.Comments == "")
+        { Swal.FireAsync("AddNewLine", " Cannot Add beacause this line not input Comments.", SweetAlertIcon.Error); return; }
+
+
+        //insert 1 dong (hour=0/sunday/comment="") - truoc khi save tat ca hien tai va reload:
+        TimeEntryModel timeEntry0 = new();
+        timeEntry0.UserCode = authState.User.Identity.Name;
+        timeEntry0.PrjCode = result_Change.PrjCode;
+        timeEntry0.PrjName = result_Change.PrjName;
+
+        timeEntry0.ContractLineId = result_Change.ContractLineId;
+        timeEntry0.WBSName = result_Change.WBSName;
+        timeEntry0.Status = result_Change.Status;
+
+        DateHeaderModel resultDate = viewTimeEntryModelHeader.FirstOrDefault();
+        timeEntry0.Date = resultDate.Date; // timeAdd.Date;          // gan lai neu ho ko chon lai ngay
+
+
+        string[] timeSplt = result_Change.PrjCode.Split(';');  //  timeEntry.PrjCode.Split(';');
+        timeEntry0.SAPB1DB = timeSplt[1];
+
+        LoadData(overrideStart, timeEntry0);
+        //var resultAdd = await timeEntryService.Create(timeEntry0);
+        //float HourBySTTDate = 0;
+        ////show popup khi update thành công : OK
+
+        //foreach (var items in RowViewTimeEntryModel) //chay theo weekly TimeEntry
+        //{//save lai het tat ca
+        //    if (items.PrjCode == "ZZZ") //ko lam j vs ham tong
+        //    {
+        //    }
+        //    else
+        //    {
+        //        foreach (var Dates in viewTimeEntryModelHeader) //chay theo date
+        //        {
+        //            HourBySTTDate = 0;
+        //            string[] timeSplt2 = items.PrjCode.Split(';');  //  timeEntry.PrjCode.Split(';');
+        //            string SAPB1DB = timeSplt2[1];
+
+        //            if (Dates.CustomF1 == "Sun")
+        //            {
+        //                HourBySTTDate = items.Sun;
+        //            }
+        //            if (Dates.CustomF1 == "Mon")
+        //            {
+        //                HourBySTTDate =items.Mon;
+        //            }
+        //            if (Dates.CustomF1 == "Tue")
+        //            {
+        //                HourBySTTDate= items.Tue;
+        //            }
+        //            if (Dates.CustomF1 == "Wed")
+        //            {
+        //                HourBySTTDate = items.Wed;
+        //            }
+        //            if (Dates.CustomF1 == "Thu")
+        //            {
+        //                HourBySTTDate = items.Thu;
+        //            }
+        //            if (Dates.CustomF1 == "Fri")
+        //            {
+        //                HourBySTTDate = items.Fri;
+        //            }
+        //            if (Dates.CustomF1 == "Sat")
+        //            {
+        //                HourBySTTDate = items.Sat;
+        //            }
+
+        //            resultAdd = await timeEntryService.SaveDataWeekLyTimeEntry(items.STT, authState.User.Identity.Name, items.PrjCode, items.ContractLineId, Dates.Date, items.CommentsDB,
+        //                    items.Comments, HourBySTTDate, items.PrjName, SAPB1DB);
+        //            //de chay thoai mai
+        //        }
+        //    }
+
+        //}
+
+
+
+
+
+        //if (resultAdd.Success == true)
+        //{
+        //    var resultModel = await Swal.FireAsync("Add New Line Success", "OK", SweetAlertIcon.Success);
+        //    if(resultModel.IsConfirmed)
+        //    {
+        //        //LoadData(overrideStart);
+        //        URLHelper.NavigateTo("/myEntry");
+
+        //        URLHelper.NavigateTo("/timeEntry");
+        //    }
+
+
+        //    //await Swal.FireAsync("Add New Line Success", "OK", SweetAlertIcon.Success);
+
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync("Can not Add New Line", "Error", SweetAlertIcon.Error);
+        //}
+
+        ////resul.Result
+    }
+
+
+
+    public async void SaveDataWeekLyTimeEntry()
+    {
+        if (timeEntry.Count <= 0)
+        {
+            await Swal.FireAsync(
+             "Error",
+            "Nothing to save, please enter data !",
+             SweetAlertIcon.Error
+             );
+            return;
+        }
+        var authState = await authenticationState;
+        //kiem tra co bi > 20h/ngay ko.
+        foreach (var items in RowViewTimeEntryModel)
+        {
+            if (items.PrjCode == "ZZZ") //ko lam j vs ham tong
+            {
+                if (items.Hour > 20 || items.Mon > 20 || items.Tue > 20 || items.Wed > 20 || items.Thu > 20 || items.Fri > 20 || items.Sat > 20 || items.Sun > 20)
+                { Swal.FireAsync("Total 1Day", " Hour summary of time entry in day can not greater than 20 hours", SweetAlertIcon.Error); return; }
+            }
+        }
+
+        float HourBySTTDate = 0;
+        string sErorMs = "";
+
+        foreach (var items in RowViewTimeEntryModel) //chay theo weekly TimeEntry
+        {//save lai het tat ca
+            if (items.PrjCode == "ZZZ" || items.Status == 1 || items.Status == 2) //ko lam j vs ham tong
+            {
+            }
+            else
+            {
+                foreach (var Dates in viewTimeEntryModelHeader) //chay theo date
+                {
+                    HourBySTTDate = 0;
+                    string[] timeSplt2 = items.PrjCode.Split(';');  //  timeEntry.PrjCode.Split(';');
+                    string SAPB1DB = timeSplt2[1];
+
+                    if (Dates.CustomF1 == "Sun")
+                    {
+                        HourBySTTDate = items.Sun;
+                    }
+                    if (Dates.CustomF1 == "Mon")
+                    {
+                        HourBySTTDate = items.Mon;
+                    }
+                    if (Dates.CustomF1 == "Tue")
+                    {
+                        HourBySTTDate = items.Tue;
+                    }
+                    if (Dates.CustomF1 == "Wed")
+                    {
+                        HourBySTTDate = items.Wed;
+                    }
+                    if (Dates.CustomF1 == "Thu")
+                    {
+                        HourBySTTDate = items.Thu;
+                    }
+                    if (Dates.CustomF1 == "Fri")
+                    {
+                        HourBySTTDate = items.Fri;
+                    }
+                    if (Dates.CustomF1 == "Sat")
+                    {
+                        HourBySTTDate = items.Sat;
+                    }
+
+                    var resultAdd = await timeEntryService.SaveDataWeekLyTimeEntry(items.STT, authState.User.Identity.Name, items.PrjCode, items.ContractLineId, Dates.Date, items.CommentsDB,
+                            items.Comments, HourBySTTDate, items.PrjName, SAPB1DB);
+                    //de chay thoai mai
+
+                    if (resultAdd.Success == true || HourBySTTDate == 0)
+                    {
+                    }
+                    else
+                    {
+                        if (sErorMs == "") { sErorMs = "Error: " + resultAdd.Message.ToString(); }
+                        else { sErorMs = sErorMs + " -" + Dates.CustomF1.ToString() + ": " + resultAdd.Message.ToString(); }
+                    }
+
+                }
+            }
+
+
+        }
+
+        if (string.IsNullOrEmpty(sErorMs))
+        {
+            await Swal.FireAsync("Save Time Entry", "SAVE Success", SweetAlertIcon.Success); //chay hoi lau nen cho view truoc
+        }
+        else
+        {
+            await Swal.FireAsync("Save Time Entry", sErorMs, SweetAlertIcon.Error); //chay hoi lau nen cho view truoc
+
+            LoadData(overrideStart, null); //khong can load lai data khi  thanh cong
+        }
+
+
+        //LoadData(overrideStart, null); khong can load lai dataa
+
+
+        //show popup khi update thành công : OK
+        //if (resultAdd.Success == true)
+        //{
+        //    //await Swal.FireAsync("SAVE Success", "OK", SweetAlertIcon.Success);
+
+
+        //    // StateHasChanged();
+        //}
+        ////else
+        ////{
+        ////    await Swal.FireAsync("test", "test model", SweetAlertIcon.Error);
+        ////}
+
+        //////resul.Result
+    }
+    
+}

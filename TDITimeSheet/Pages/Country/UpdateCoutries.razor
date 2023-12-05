@@ -1,0 +1,129 @@
+﻿@page "/updateCountries"
+@inject CountryController countryService
+
+
+
+<EditForm Model="country" OnValidSubmit="SaveCountry">
+    @*<DataAnnotationsValidator/>*@
+    <div class="mb-3">
+        <label for="Name">Name</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="country.Name"></InputText>
+        </div>
+    </div>
+    
+    <div class="mb-3">
+        <label for="Name">Sapb1db</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="country.Sapb1db"></InputText>
+        </div>
+
+    </div>
+    <div class="mb-3">
+        <label for="Name">HREmail</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="country.HREmail"></InputText>
+        </div>
+
+    </div>
+    <div class="row">
+        <div class="col-md-2"> <label>Active</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div style="text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelUpdate">Cancel</button>
+
+    </div>
+</EditForm>
+
+
+@code {
+    public bool check { get; set; }
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            country.Active = true;
+        }
+        else
+        {
+            country.Active = false;
+
+        }
+    }
+    protected CountryModel country = new();
+    [Parameter] public int CountryId { get; set; }
+    [Parameter] public string Message { get; set; } = "";
+
+
+    List<CountryModel> countries = new List<CountryModel>();
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await countryService.GetById(CountryId);
+        if (result.Success == true)
+        {
+            country = result.Data as CountryModel;
+            if (country.Active == true)
+            {
+                check = true;
+            }
+            else
+            {
+                check = false;
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+             "Get Country",
+             result.Message,
+             SweetAlertIcon.Error
+             );
+        }
+
+
+        //countries = result.Data as List<CountryModel>;
+
+
+    }
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    private void CancelUpdate()
+    {
+        //URLHelper.NavigateTo("/country");
+        BlazoredModal.CancelAsync();
+
+    }
+
+
+
+
+    protected async Task SaveCountry()
+    {
+        //var resultUpdate = await countryService.Update(country);
+        //if (resultUpdate.Success == true)
+        //{
+        //    URLHelper.NavigateTo("/country",true);
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Update Country",
+        //      resultUpdate.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+        await BlazoredModal.CloseAsync(ModalResult.Ok(country));
+    }
+
+
+
+}

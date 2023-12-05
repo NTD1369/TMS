@@ -1,0 +1,114 @@
+﻿@page "/addNew"
+@inject CountryController countryService
+
+
+
+
+@*<h3>AddNewCountry</h3>*@
+<EditForm Model="country" OnValidSubmit="SaveCountry">
+    @*<DataAnnotationsValidator/>*@
+   @* <div class="mb-3">
+        <label for="Name">Id</label>
+        <div class="col-md-4">
+            <InputNumber class="form-control" @bind-Value="country.Id"></InputNumber>
+        </div>
+    </div>*@
+    <div class="mb-3">
+        <label for="Name">Name</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="country.Name"></InputText>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="Name">Sapb1db</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="country.Sapb1db"></InputText>
+        </div>
+
+    </div>
+    <div class="mb-3">
+        <label for="Name">HREmail</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="country.HREmail"></InputText>
+        </div>
+
+    </div>
+    <div class="row">
+        <div class="col-md-2"> <label>Active</label></div>
+        <div class="col-md-10">
+            <DxCheckBox Checked="@check"
+                        CheckedExpression="@(() => check)"
+                        CheckedChanged="@((bool value) => CheckedChanged(value))">
+            </DxCheckBox>
+        </div>
+    </div>
+    <div style="text-align:right">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelAdd">Cancel</button>
+
+    </div>
+</EditForm>
+
+
+@code {
+    public bool check { get; set; }
+    void CheckedChanged(bool value)
+    {
+        check = value;
+        if (check == true)
+        {
+            country.Active = true;
+        }
+        else
+        {
+            country.Active = false;
+
+        }
+    }
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    protected CountryModel country = new();
+    [Parameter] public string Message { get; set; } = "";
+
+    protected async Task SaveCountry()
+    {
+        //country.Active = true;
+        //var resultAdd = await countryService.Create(country);
+        //if (resultAdd.Success == true)
+        //{
+        //    SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+        //    {
+        //        Title = "Create Country",
+        //        Text = $"Create Country Successfully Completed",
+        //        Icon = SweetAlertIcon.Success,
+        //        ShowCancelButton = false,
+        //        ConfirmButtonText = $"OK",
+        //        CancelButtonText = "No"
+        //    });
+        //    if (!string.IsNullOrEmpty(result.Value))
+        //    { 
+        //        URLHelper.NavigateTo("/country",true);
+        //    }
+            
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Create Country",
+        //      resultAdd.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+        await BlazoredModal.CloseAsync(ModalResult.Ok(country));
+
+    }
+
+
+    private async void CancelAdd()
+    {
+        await BlazoredModal.CancelAsync();
+
+
+    }
+}

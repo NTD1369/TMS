@@ -1,0 +1,67 @@
+﻿@page "/index"
+@using System.Security.Claims;
+<PageTitle>Index</PageTitle>
+
+<span style="margin-right:5px">Hello, @userName</span>
+
+@*<AuthorizeView>
+    <Authorized>
+        <h1>Hello, @context.User.Identity.Name!</h1>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Hello, Guest</h1>
+    </NotAuthorized>
+</AuthorizeView>
+
+Welcome to your new app.
+
+<SurveyPrompt Title="How is Blazor working for you?" />
+<AuthorizeView>
+    <Authorized>
+        <br />
+        <br />
+        <button class="btn btn-outline-primary" @onclick="DisPlayGreentingAlert">DisPlay Greenting Alert</button>
+    </Authorized>
+</AuthorizeView>*@
+
+@code{
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    //private async Task DisPlayGreentingAlert()
+    //{
+    //    var authState = await authenticationState;
+    //    var message = $"Hello {authState.User.Identity.Name}";
+    //    await   js.InvokeVoidAsync("alert", message);
+    //}
+
+   
+    public string userName = "";
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            var user = authState?.User;
+            userName = authState.User.Identity.Name;
+
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0)
+            {
+                var roleClaim = Claims.Where(x => x.Type == "FullName").FirstOrDefault();
+                userName = roleClaim.Value;
+            }
+
+            if (user?.Identity is not null && user.Identity.IsAuthenticated)
+            {
+
+            }
+            else
+            {
+                //URLHelper.NavigateTo("/login");
+            }
+        }
+
+    }
+
+}

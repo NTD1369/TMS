@@ -1,0 +1,10 @@
+﻿@page "/modalDemo"
+<h3>ModelDemo</h3>
+@inject IModalService modal
+
+<button @onclick="@(()=> modal.Show<Counter>("MOdal example"))" class="btn btn-primary">View</button>
+
+
+@code {
+
+}

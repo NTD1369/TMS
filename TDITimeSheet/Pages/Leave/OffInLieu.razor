@@ -1,0 +1,323 @@
+﻿@page "/off_in_lieu"
+
+@attribute [Authorize]
+
+@inject TDI.Application.Interfaces.IOffInLieuService offInLieuService
+@inject TDI.Application.Interfaces.IUserService userService
+
+<PageTitle>TDI - Off-In-Lieu</PageTitle>
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Off-In-Lieu</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+            @*@if (DataSource != null && DataSource.Count() > 0)
+            {
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+
+            }*@
+
+            @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Insert, permissionList))
+            {
+                <DxButton class="btn add-btn  mr-4" Click="() => OnAddNewRow() " IconCssClass="fa fa-plus" Text="New" RenderStyle="ButtonRenderStyle.None" />
+            }
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@UseShowFilterRow" CheckedChanged="@((bool value) => UseShowFilter_CheckedChanged(value))">Show Filter</DxCheckBox>
+</div>
+<DxGrid @ref="Grid" style="height: calc(100vh - 22vh)"
+        Data="@DataSource"
+        PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditModelSaving="OnEditModelSaving"
+        DataItemDeleting="OnDataItemDeleting"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        PopupEditFormHeaderText="@Title"
+        ShowSearchBox="@ShowSearchBox"
+        ValidationEnabled="true"
+        ShowFilterRow="@UseShowFilterRow">
+    <Columns>
+        <DxGridDataColumn FieldName="FullName" Caption="UserName" MinWidth="100"  />
+        <DxGridDataColumn FieldName="Days" MinWidth="20" />
+        <DxGridDataColumn FieldName="Month" MinWidth="20" />
+        <DxGridDataColumn FieldName="Year" MinWidth="20" DisplayFormat="d" />
+        <DxGridDataColumn FieldName="Remark" MinWidth="450" />
+
+
+        <DxGridCommandColumn MinWidth="200">
+            <HeaderTemplate>
+                @*<DxButton Click="() => Grid.StartEditNewRowAsync()" Text="New" RenderStyle="ButtonRenderStyle.Info" />*@
+            </HeaderTemplate>
+            <CellDisplayTemplate>
+                @{
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Edit, permissionList))
+                    {
+                        <DxButton Click="() => OnEditRow(context.DataItem)" Text="Edit" RenderStyle="ButtonRenderStyle.Warning" />
+                    }
+                    @if (this.commonService.CheckPermission(TDI.Utilities.Constants.PermissionCode.Delete, permissionList))
+                    {
+                        <DxButton Click="() => OnDeleteRow(context.DataItem)" Text="Delete" RenderStyle="ButtonRenderStyle.Danger" />
+                    }
+                }
+            </CellDisplayTemplate>
+        </DxGridCommandColumn>
+    </Columns>
+    <EditFormTemplate Context="editFormContext">
+        @{
+            var offInLieu = (OffInLieuModel)editFormContext.EditModel;
+        }
+        <DxFormLayout CssClass="w-800">
+            @*<DxFormLayoutItem Caption="UserName" ColSpanMd="6">
+                <DxTextBox @bind-Text="@offInLieu.UserName" />
+            </DxFormLayoutItem>*@
+            <DxFormLayoutItem Caption="UserName" ColSpanMd="12">
+                <DxComboBox Data="@UserDataSource"
+                            TextFieldName="@nameof(OffInLieuModel.UserName)"
+                            ValueFieldName="@nameof(OffInLieuModel.UserName)"
+                            CssClass="cw-480"
+                            @bind-Value="@offInLieu.UserName"
+                            FilteringMode="DataGridFilteringMode.Contains" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Days" ColSpanMd="12">
+                <DxSpinEdit @bind-Value="@offInLieu.Days" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Month" ColSpanMd="12">
+                <DxSpinEdit @bind-Value="@offInLieu.Month" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Year" ColSpanMd="12">
+                <DxSpinEdit @bind-Value="@offInLieu.Year" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Remark" ColSpanMd="12">
+                <DxTextBox @bind-Text="@offInLieu.Remark" />
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem ColSpanMd="12">
+                <ValidationSummary />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+
+    bool UseShowFilterRow { get; set; } = false;
+    bool ShowSearchBox { get; set; } = true;
+    protected void UseShowFilter_CheckedChanged(bool value)
+    {
+        UseShowFilterRow = value;
+        ShowSearchBox = !value;
+    }
+
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<OffInLieuModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+
+    string Function = "LEAVEOFFINLIEU";
+    string RoleName = "";
+    string Title = "Leave";
+    List<RolePermission> permissionList = new List<RolePermission>();
+
+    IEnumerable<UserModel> UserDataSource { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            User = authState?.User;
+
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0)
+            {
+                var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+                RoleName = roleClaim.Value;
+            }
+            if (User?.Identity is not null && User.Identity.IsAuthenticated)
+            {
+                await GetFunctionByRole();
+                await UpdateDataAsync();
+                await GetUsersDataAsync();
+            }
+            else
+            {
+                URLHelper.NavigateTo("/");
+            }
+        }
+        //return base.OnInitializedAsync();
+    }
+
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      "Leave Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+    public void OnAddNewRow()
+    {
+        Title = "Add New Leave Type"; Grid.StartEditNewRowAsync();
+    }
+    public void OnEditRow(object DataItem)
+    {
+        Title = "Edit Leave Type"; Grid.StartEditDataItemAsync(DataItem);
+    }
+    public void OnDeleteRow(object DataItem)
+    {
+        Title = "Delete Leave Type"; Grid.ShowDataItemDeleteConfirmation(DataItem);
+    }
+
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private async Task OnEditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var offInLieu = (OffInLieuModel)e.EditModel;
+
+        if (e.IsNew)
+        {
+            var res = offInLieuService.InsertOffInLieu(User.Identity.Name, offInLieu);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Insert Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        else
+        {
+            var res = offInLieuService.UpdateOffInLieu(User.Identity.Name, (OffInLieuModel)e.DataItem, offInLieu);
+            if (res.Success)
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Success);
+            }
+            else
+            {
+                await Swal.FireAsync("Update Data", res.Message, SweetAlertIcon.Error);
+            }
+        }
+        await UpdateDataAsync();
+    }
+
+    private async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var res = offInLieuService.DeleteOffInLieu((OffInLieuModel)e.DataItem);
+        if (res.Success)
+        {
+            await Swal.FireAsync("Delete Data", res.Message, SweetAlertIcon.Success);
+        }
+        else
+        {
+            await Swal.FireAsync("Delete Data", res.Message, SweetAlertIcon.Error);
+        }
+        await UpdateDataAsync();
+    }
+
+    private async Task UpdateDataAsync()
+    {
+        DataSource = new List<OffInLieuModel>();
+        var result = await offInLieuService.GetAllOffInLieu(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<OffInLieuModel> offInLieus)
+            {
+                DataSource = offInLieus;
+            }
+        }
+    }
+
+    private async Task GetUsersDataAsync()
+    {
+        UserDataSource = new List<UserModel>();
+        var result = await userService.GetAllUser(string.Empty);
+        if (result.Success)
+        {
+            if (result.Data is List<UserModel> users)
+            {
+                UserDataSource = users;
+            }
+        }
+    }
+}

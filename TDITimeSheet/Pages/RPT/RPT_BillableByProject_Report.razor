@@ -1,0 +1,281 @@
+﻿@page "/RPT_BillableByProject_Report"
+@inject ApprovalTimeSheetSummaryController rpt_approvalTimeSheetService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime Js
+@inject TDI.Application.Interfaces.ICountryService countryService
+@using System.Security.Claims;
+
+<h3>Detailed By Project</h3>
+<div class="row">
+    <div class="col-md-2">
+        <div class="form-group">
+            <label>From</label>
+            <DxDateEdit Date="overrideFromDate" DateExpression="@(() => overrideFromDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "FromDate"))" CssClass="cw-320" />
+
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="form-group">
+            <label>To</label>
+            <DxDateEdit Date="overrideToDate" DateExpression="@(() => overrideToDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "ToDate"))" CssClass="cw-320" />
+
+        </div>
+    </div> 
+    @*<div class="col-md-2">
+        <div class="form-group">
+            <label>Group by</label>
+            <DxCheckBox Date="overrideToDate" DateExpression="@(() => overrideToDate)" PickerDisplayMode="DatePickerDisplayMode.Calendar" DateChanged="@((DateTime newValue) => OnDateChanged(newValue, "ToDate"))" CssClass="cw-320" />
+
+        </div>
+    </div>*@
+    @*<div class="col-md-2">
+        <div class="form-group">
+            <label>Country</label>
+            <DxComboBox Data="@CountryDataSource" TextFieldName="@nameof(CountryModel.Name)"
+                        ValueFieldName="@nameof(CountryModel.Id)"
+                        CssClass="cw-480"
+                        @bind-Value="@CountryId" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                        FilteringMode="DataGridFilteringMode.Contains"></DxComboBox>
+        </div>
+    </div>*@
+    <div class="col-md-1" style="margin-top:32px">
+        <button class="btn btn-primary" style="width:100%" @onclick="@(()=>LoadData())">Filter</button>
+    </div>
+    <div class="col-md-3"></div>
+    <div class="col-md-2" style="text-align:right;margin-top:32px">
+
+        <DxButton class="btn btn-success" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+    </div>
+     
+
+</div> 
+
+
+@*Country	Department	ResourcesType	ContractCode	EmployeeNo	UserCode	FullName	ContractName	PrjMandays	WBSManday	
+Billable1A	Presales1B	Leave1C	Other1D	Billable2W	Presales2X	Leave2Y	Other2Z	Total	EmployeeCategory*@
+ 
+ 
+<DxGrid @ref="Grid" Data="approvals" ShowSearchBox="false" style="height: calc(100vh - 30vh)"
+        ShowFilterRow="true"
+        SelectionMode="GridSelectionMode.Single"
+        AllowSelectRowByClick="true">
+    <Columns>
+        <DxGridDataColumn FieldName="FullName" Caption="FullName" MinWidth="100" />
+        <DxGridDataColumn FieldName="Department" Caption="Team" MinWidth="150" />
+        <DxGridDataColumn FieldName="Country" Caption="Consultant Location" MinWidth="100" />
+        <DxGridDataColumn FieldName="ResourcesType" Caption="User Type" MinWidth="100" />
+        <DxGridDataColumn FieldName="ContractName" Caption="Project Name" MinWidth="150" />
+        <DxGridDataColumn FieldName="LineCode" Caption="WBS" MinWidth="150" />
+        <DxGridDataColumn FieldName="PrjCountry" Caption="Project Location" MinWidth="80" />
+
+        @*<DxGridDataColumn FieldName="EmployeeNo" Caption="EmployeeNo" MinWidth="100" />*@
+        @* <DxGridDataColumn FieldName="UserCode" Caption="Consultant Name" MinWidth="100" /> *@
+        <DxGridDataColumn FieldName="Comments" Caption="Comments" MinWidth="150" />
+        @*<DxGridDataColumn FieldName="PrjMandays" Caption="PrjMandays" MinWidth="100" />
+        <DxGridDataColumn FieldName="WBSManday" Caption="WBSManday" MinWidth="150" />*@
+
+        <DxGridDataColumn FieldName="Billable1A" Caption="Billable" MinWidth="80" />
+        @*<DxGridDataColumn   Caption="Non-Billable" Width="20" />*@
+        <DxGridDataColumn FieldName="Presales1B" Caption="Presales(Non-Billable)" MinWidth="100" />
+        <DxGridDataColumn FieldName="Leave1C" Caption="Leave(Non-Billable)" MinWidth="100" />
+        <DxGridDataColumn FieldName="Other1D" Caption="Other(Non-Billable)" MinWidth="100" />
+
+        @*<DxGridDataColumn Caption="%" Width="5" />*@
+        <DxGridDataColumn FieldName="Billable2W" Caption="Billable%" MinWidth="100" />
+        <DxGridDataColumn FieldName="Presales2X" Caption="Presales%" MinWidth="100" />
+        <DxGridDataColumn FieldName="Leave2Y" Caption="Leave%" MinWidth="100" />
+        <DxGridDataColumn FieldName="Other2Z" Caption="Other%" MinWidth="100" />
+
+        <DxGridDataColumn FieldName="Total" Caption="Total%" MinWidth="100" />
+        <DxGridDataColumn FieldName="EmployeeCategory" Caption="EmployeeCategory" MinWidth="150" />
+    </Columns>
+</DxGrid>
+@code {
+    string Function = "RPTBILLABLEBYPROJECTREPORT";
+    string RoleName = "";
+    string Title = "REPORT";
+    List<RolePermission> permissionList = new List<RolePermission>();
+    IGrid Grid { get; set; }
+    IEnumerable<CountryModel> CountryDataSource { get; set; }
+    private int CountryId;
+
+    private DateTime overrideFromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);     //DateTime.Today;
+    private DateTime overrideToDate = DateTime.Today;
+    void OnDateChanged(DateTime newValue, string ObjType)
+    {
+        if (ObjType == "FromDate") { overrideFromDate = newValue; }
+        if (ObjType == "ToDate") { overrideToDate = newValue; } 
+    }
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private List<RPT_BillableByProject_ReportModel> approvals = new List<RPT_BillableByProject_ReportModel>();
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+       
+        //if (authenticationState is not null)
+        //{
+
+        //    var authState = await authenticationState;
+        //    User = authState?.User;
+        //    var Claims = authState.User.Claims;
+        //    if (Claims != null && Claims.Count() > 0)
+        //    {
+        //        var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+        //        RoleName = roleClaim.Value;
+        //    }
+        //    if (User?.Identity is not null && User.Identity.IsAuthenticated)
+        //    {
+        //        await GetFunctionByRole();
+        //        await GetCountryDataAsync();
+
+        //        await LoadData();
+        //    }
+        //    else
+        //    {
+        //        URLHelper.NavigateTo("/");
+        //    }
+        //}
+    
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+
+                    //lấy quyền
+                    await GetFunctionByRole();
+                    await GetCountryDataAsync();
+
+                    await LoadData();
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+            }
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+
+    private async Task LoadData()
+    {
+        //DateTime fromDate = new DateTime(2023, 04, 01);
+        //DateTime toDate = new DateTime(2023, 04, 30);
+        var authState = await authenticationState;
+        string Username = authState.User.Identity.Name;
+
+        var itemApproval = await rpt_approvalTimeSheetService.RPT_BillableByProject_Report(overrideFromDate, overrideToDate, Username, CountryId.ToString() , "", "");
+        if (itemApproval.Success == true)
+        {
+            approvals = itemApproval.Data as List<RPT_BillableByProject_ReportModel>;
+            StateHasChanged();
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data rpt_approvalTimeSheet",
+              itemApproval.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+
+    private async Task PrintTest()
+    {
+        //NavigationManager.NavigateTo("/RPT_Billable_Report");
+        //URLHelper.NavigateTo("/RPT_Billable_Report");
+        await Js.InvokeVoidAsync("CallPage1");
+        //JSRuntime.InvokeVoidAsync("print");
+
+    }
+    async Task ExportXlsx_Click()
+    {
+        await Grid.ExportToXlsxAsync("Billable Report " + DateTime.Now.ToString("yyyyMMdd"), new GridXlExportOptions()
+        {
+            //ExportSelectedRowsOnly = ExportSelectedRowsOnly,
+            //CustomizeCell = OnCustomizeCell
+        });
+    }
+
+    private async Task GetCountryDataAsync()
+    {
+        CountryDataSource = new List<CountryModel>();
+        var result = await countryService.GetCountryActive(-1);
+        if (result.Success)
+        {
+            if (result.Data is List<CountryModel> countries)
+            {
+                CountryDataSource = countries;
+            }
+        }
+    }
+}
+
+
+ 

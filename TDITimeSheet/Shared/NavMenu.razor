@@ -1,0 +1,252 @@
+﻿@using System.Security.Claims;
+@*<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">TDITimeSheet</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>*@
+@inject CommonController commonService
+
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-inner slimscroll">
+        <div id="sidebar-menu" class="sidebar-menu">
+            <ul>
+                @*  <li class="menu-title">
+                <span>Main</span>
+                </li>
+                <AuthorizeView>
+                <Authorized>
+
+                <li class="submenu">
+                <a><i class="la la-dashboard"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
+                <ul style="display: none;">
+
+                </ul>
+                </li>
+                <li class="submenu">
+                <a><i class="la la-space-shuttle"></i> <span> Admin</span> <span  class="menu-arrow"></span></a>
+                <ul style="display: none;">
+                <li><a href="country"><i class="la la-globe" /><span style="margin-left:5px"> Country</span></a></li>
+                <li><a href="roles"><i class="la la-book" /><span> Roles</span></a></li>
+
+
+                </ul>
+                </li>
+                <li class="submenu">
+                <a><i class="la la-rocket"></i> <span> WBS Master</span> <span class="menu-arrow"></span></a>
+                <ul style="display: none;">
+                <li><a href="ContractHeader"> <i class="la la-gear" /><span style="margin-left:5px">Project Set Up</span></a></li>
+                @*<li><a href="contractMember"> <i class="la la-user-plus" /><span style="margin-left:5px">Member Set Up</span></a></li>
+                <li><a href="contractLine"> <i class="la la-gear" /><span style="margin-left:5px">WBS Set Up</span></a></li>
+                <li><a href="contractAssign"> <i class="la la-user-plus" /><span style="margin-left:5px"> WBS Member Set Up</span></a></li>
+                </ul>
+                </li>
+                <li class="submenu">
+                <a><i class="la la-calendar"></i> <span> Time Entry</span> <span class="menu-arrow"></span></a>
+                <ul style="display: none;">
+                <li><a href="timeEntry"> <i class="la la-calendar" /><span style="margin-left:5px"> Weekly Entry</span></a></li>
+                <li><a href="timeEntrySubmit"> <i class="la la-calendar" /><span style="margin-left:5px"> Submit for PM Approval</span></a></li>
+                <li><a href="MyTimeEntry"> <i class="la la-calendar" /><span style="margin-left:5px"> My Entry</span></a></li>
+                <li><a href="ApprovalTimeEntry"> <i class="la la-calendar" /><span style="margin-left:5px"> Approve TimeSheet</span></a></li>
+                </ul>
+                </li>
+
+                <li class="submenu">
+                <a ><i class="la la-coffee"></i> <span> Leave</span> <span class="menu-arrow"></span></a>
+                <ul style="display: none;">
+                <li><a href="leave_approval"><i class="la la-black-tie" /><span> Leave Approval</span></a></li>
+                <li><a href="leave_employee"> <i class="la la-users" /><span> Leave Employee</span></a></li>
+                <li><a href="leave_balance"> <i class="la la-user-md" /><span> Leave Balance</span></a></li>
+                <li><a href="leave_type"><i class="la la-bomb" /><span> Leave Type</span></a></li>
+                </ul>
+                </li>
+                <li class="submenu">
+                <a><i class="la la-laptop"></i> <span> Report</span> <span class="menu-arrow"></span></a>
+                <ul style="display: none;">
+                <li><a href="RPT_TimeEntrySummary"><i class="la la-user-secret" /><span>TimeEntry Summary Report</span></a></li>
+                <li><a href="approvalTimeSheetSummary"><i class="la la-user-secret" /><span>Approval Timesheet Summary Report</span></a></li>
+                </ul>
+                </li>
+
+                </Authorized>
+                </AuthorizeView>*@
+                @foreach (var father in menus)
+                {
+                    @if (@father.Childrens != null && @father.Childrens.Count() > 0)
+                    {
+
+                        string iconFather = @father.IconCss;
+                        if (string.IsNullOrEmpty(iconFather))
+                        {
+                            iconFather = "la la-dashboard";
+                        }
+
+                        <li class="submenu">
+
+                            <a><i class="@iconFather"></i> <span> @father.Name</span> <span class="menu-arrow"></span></a>
+
+                            <ul style="display: none;">
+                                @foreach (var children in @father.Childrens)
+                                {
+                                    <li><a href="@children.Url"><i class="@children.IconCss" /> <span style="margin-left:10px"> @children.Name</span></a></li>
+                                }
+                            </ul>
+                        </li>
+
+                    }
+                    else
+                    {
+                        <li>
+                            <a><i class="@father.IconCss"></i> <span> @father.Name</span></a>
+                        </li>
+                    }
+                }
+
+
+
+
+
+
+
+            </ul>
+        </div>
+    </div>
+</div>
+@*<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+               <AuthorizeView Roles="Administrator,User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="counter">
+                        <span class="oi oi-plus" aria-hidden="true"></span> Counter
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Administrator">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="fetchdata">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Administrator,User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="country">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Country
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Administrator,User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="addNew">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Add new
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Administrator,User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="timeEntry">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Time Entry
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        @*<AuthorizeView Roles="Administrator,User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="test">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Test
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>*@
+
+@* </nav>
+</div>*@
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private List<MFunctionModel> menus = new List<MFunctionModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var authState = await authenticationState;
+
+        var Claims = authState.User.Claims;
+        if (Claims != null && Claims.Count() > 0)
+        {
+            var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+            var functionrs = await commonService.GetFunctionByRole(roleClaim.Value.ToString());
+            if (functionrs.Success == true)
+            {
+                menus = functionrs.Data as List<MFunctionModel>;
+                if (menus != null && menus.Count() > 0)
+                {
+                    menus = menus.Where(x => x.Status == "A").OrderBy(x => x.SortOrder).ToList();
+
+                    for (int i = 0; i < menus.Count; i++)
+                    {
+                        menus[i].Childrens = menus[i].Childrens.OrderBy(x => x.SortOrder).ToList();
+                    }
+                }
+            }
+            else
+            {
+                await Swal.FireAsync(
+                  "Load Data Menu",
+                  functionrs.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+        }
+
+
+
+
+    }
+    //protected override async Task OnAfterRenderAsync(bool firstRender)
+    //{
+    //    await base.OnAfterRenderAsync(firstRender);
+    //    if (firstRender)
+    //    {
+    //        js.InvokeVoidAsync("init");
+    //    }
+    //}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if ((firstRender == false && menus != null && menus.Count() > 0))
+        {
+            var authState = await authenticationState;
+
+            var Claims = authState.User.Claims;
+            if (Claims != null && Claims.Count() > 0 && menus != null && menus.Count() > 0)
+            {
+                await js.InvokeVoidAsync("init");
+            }
+        }
+    }
+
+}

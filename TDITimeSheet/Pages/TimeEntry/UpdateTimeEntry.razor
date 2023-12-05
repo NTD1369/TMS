@@ -1,0 +1,109 @@
+﻿@page "/TimeEntryUpdate"
+@inject TimeEntryController timeEntryService
+
+
+
+
+<h3>UpdateTimeEntry</h3>
+<EditForm Model="timeEntryUpdate" OnValidSubmit="SaveTimeEntryUpdate">
+    @* <div class="col-md-4">
+    <DxComboBox Data="@timeEntry"
+    ListRenderMode="ListRenderMode.Virtual"
+    FilteringMode="DataGridFilteringMode.Contains"
+    TextFieldName="@nameof(ProjectModel.PrjName)"
+    ValueFieldName="@nameof(ProjectModel.PrjCode)"
+    @bind-Value="timeEntry.PrjCode"
+    CssClass="cw-480" />
+    </div>*@
+
+    <div class="mb-3">
+        <label for="Name">Hour</label>
+        <div class="col-md-4">
+            <InputNumber class="form-control" @bind-Value="timeEntryUpdate.Hour"></InputNumber>
+        </div>
+         
+    </div>
+
+    <div class="mb-3">
+        <label for="Comments">Comments :</label>
+        <div class="">
+            <InputText class="form-control" @bind-Value="timeEntryUpdate.Comments"></InputText>
+        </div>
+    </div>
+
+    <div>
+        <button>Save</button>
+        @*<button @onclick="CancelUpdate">Cancel</button>*@
+
+    </div>
+</EditForm>
+
+
+@code {
+
+    [Parameter] public TimeEntryModel timeEntryUpdate { get; set; }
+    [Parameter] public string message { get; set; } = "";
+
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        if (timeEntryUpdate != null)
+        {
+            //URLHelper.NavigateTo("/timeEntry");
+            //
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Error TimeEntry",
+              "Cannot found data",
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    protected async Task SaveTimeEntryUpdate()
+    {
+        if (timeEntryUpdate.Hour > 20)
+        {
+            await Swal.FireAsync(
+              "Error",
+              "Hour summary of time entry in day can not greater than 8 hours",
+              SweetAlertIcon.Error
+              );
+        }
+        else
+        {
+            var resultUpdate = await timeEntryService.Update(timeEntryUpdate);
+            if (resultUpdate.Success == true)
+            {
+                //URLHelper.NavigateTo("/timeEntry");
+                await BlazoredModal.CloseAsync(ModalResult.Ok(resultUpdate));
+            }
+            else
+            {
+                //await BlazoredModal.CloseAsync(ModalResult.Ok(resultUpdate));
+
+                await Swal.FireAsync(
+                  "Update TimeEntry",
+                  resultUpdate.Message,
+                  SweetAlertIcon.Error
+                  );
+            }
+
+        }
+       
+    }
+
+
+    private void CancelUpdate()
+    {
+        URLHelper.NavigateTo("/timeEntry");
+
+    }
+
+
+
+
+}

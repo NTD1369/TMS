@@ -1,0 +1,280 @@
+﻿@page "/roles/{roleId}/{roleName}"
+@inject RolesController rolesService
+@inject PermissionController permissionService
+<h3>Detail / <span>@roleName</span></h3>
+
+
+<table class="table tree" style="margin-top:10px">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+
+            @foreach (var itemMPer in permissionL)
+            {
+                <th>
+                    @itemMPer.Name
+                </th>
+            }
+
+        </tr>
+    </thead>
+
+    <tbody>
+        @{
+            int countNode = 1;
+            int fatherNode = 1;
+        }
+        @foreach (var father in fatherList)
+        {
+            <tr class="treegrid-@countNode expanded">
+                <td>
+                    <span>@father.Id</span>
+                </td>
+                <td>
+                    <span>@father.Name</span>
+                </td>
+                @foreach (var itemMPer in permissionL)
+                {
+                    var checkPer = father.AvailablePermission.Where(x => x.ToLower() == itemMPer.Code.ToLower());
+                    bool check = false;
+                    if (checkPer.Any())
+                    {
+                        check = true;
+                    }
+                    <td>
+                        <DxCheckBox CheckType="CheckType.Switch"
+                            LabelPosition="LabelPosition.Left"
+                            Checked="@check"
+                            CheckedChanged="@((bool t) => CheckedChanged(t, roleId, father.Id, itemMPer.Code))"
+                            Alignment="CheckBoxContentAlignment.SpaceBetween" />
+                    </td>
+                }
+               
+            </tr>
+            fatherNode = countNode;
+            countNode++;
+            @foreach (var chil in father.Childrens)
+            {
+                <tr class="treegrid-@countNode treegrid-parent-@fatherNode">
+                    <td>
+                        <span>
+                            @chil.Name
+
+                        </span>
+                    </td>
+                    <td>
+                        <span>
+                            @chil.Name
+
+                        </span>
+                    </td>
+                    @foreach (var itemPer in permissionL)
+                    {
+                        var checkPer = chil.AvailablePermission.Where(x => x.ToLower() == itemPer.Code.ToLower());
+                        bool check = false;
+                        if (checkPer.Any())
+                        {
+                            check = true;
+                        }
+                        <td>
+                            <DxCheckBox CheckType="CheckType.Switch"
+                            LabelPosition="LabelPosition.Left"
+                            Checked="@check"
+                            CheckedChanged="@((bool t) => CheckedChanged(t, roleId, chil.Id, itemPer.Code))"
+                            Alignment="CheckBoxContentAlignment.SpaceBetween" />
+                        </td>
+                    }
+
+                   
+                </tr>
+                countNode++;
+            }
+
+        }
+    </tbody>
+</table>
+@code {
+    bool Enabled { get; set; } = false;
+    bool SilentMode { get; set; } = true;
+
+    void CheckedChanged1(bool value)
+    {
+        SilentMode = value;
+        Enabled = !value;
+    }
+    public async Task CheckedChanged(bool value, string roleId, string functionId, string permissionCode)
+    {
+        var itemCheck = await permissionService.GetRolePermission(roleId, permissionCode, functionId);
+        if(itemCheck.Success && itemCheck.Data != null )
+        {
+            await permissionService.Delete(roleId, permissionCode, functionId);
+        }
+        else
+        {
+            await permissionService.Insert(roleId, permissionCode, functionId, "A");
+        }
+
+        //URLHelper.NavigateTo($"/roles/{roleId}",true);
+        LoadDataRolePermission();
+        LoadData();
+        GetMPermission();
+        //itemPermissions.RoleId = new Guid(roleId);
+        //itemPermissions.Permission = "V";
+        //itemPermissions.FunctionId = Id;
+        //itemPermissions.Status = value ? TDI.Utilities.Constants.TSStatus.Active : TDI.Utilities.Constants.TSStatus.Inactive;
+
+
+
+
+        //var itemMFuntion = await permissionService.Update(itemPermissions);
+        //if (itemMFuntion.Success == true)
+        //{
+        //    await LoadData();
+        //}
+        //else
+        //{
+        //    await Swal.FireAsync(
+        //      "Load Data Permission",
+        //      itemMFuntion.Message,
+        //      SweetAlertIcon.Error
+        //      );
+        //}
+    }
+
+    [Parameter] public string roleId { get; set; }
+    [Parameter] public string roleName { get; set; }
+
+    //[Parameter] public string permissionId { get; set; }
+    //[Parameter] public string functionId { get; set; }
+
+    private List<MFunctionModel> mFuctions = new List<MFunctionModel>();
+    private List<MFunctionModel> fatherList = new List<MFunctionModel>();
+    private List<MPermission> permissionL = new List<MPermission>();
+    private List<RolePermission> rolePermissions = new List<RolePermission>();
+    
+
+
+    MFunctionModel model = new MFunctionModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        //
+        LoadDataRolePermission();
+        LoadData();
+        //GetPermissionByRole();
+        GetMPermission();
+
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            js.InvokeVoidAsync("initTreeGrid");
+        }
+    }
+
+    private async Task LoadData()
+    {
+
+        var itemMFuntion = await rolesService.GetAllMfuction();
+        if (itemMFuntion.Success == true)
+        {
+            mFuctions = itemMFuntion.Data as List<MFunctionModel>;
+
+
+            fatherList = mFuctions.Where(x => x.ParentId == null || x.ParentId == "").ToList(); // string.IsNullOrEmpty(x.ParentId)
+
+            @foreach (var father in fatherList)
+            {
+                // father.FunctionId
+                var rolePer = rolePermissions.Where(x => x.FunctionId == father.Id && x.RoleId.ToString() == roleId && x.Status == TDI.Utilities.Constants.TSStatus.Active);
+                father.AvailablePermission = rolePer.Select(x => x.Permission).ToList();
+                father.Childrens = mFuctions.Where(x => x.ParentId == father.Id).ToList();
+                foreach (var item in father.Childrens)
+                {
+                    var rolePer1 = rolePermissions.Where(x => x.FunctionId == item.Id && x.RoleId.ToString() == roleId && x.Status == TDI.Utilities.Constants.TSStatus.Active);
+                    item.AvailablePermission = rolePer1.Select(x => x.Permission).ToList();
+                }
+            }
+
+            StateHasChanged();
+            //model = fatherList.FirstOrDefault();
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Roles",
+              itemMFuntion.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    private async Task GetMPermission()
+    {
+        
+        var itemPer = await permissionService.GetMPermission();
+        if (itemPer.Success == true)
+        {
+            permissionL = itemPer.Data as List<MPermission>;
+
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Permission",
+              itemPer.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    private async Task LoadDataRolePermission()
+    {
+        //itemPermissions.RoleId = new Guid(roleId);
+
+        var itemPer = await permissionService.GetPermission(roleId);
+        if (itemPer.Success == true)
+        {
+            rolePermissions = itemPer.Data as List<RolePermission>;
+            foreach (var i in rolePermissions)
+            {
+                var itemPerr = rolePermissions.Find(x => x.FunctionId == i.FunctionId);
+            }
+        }
+        else
+        {
+            await Swal.FireAsync(
+              "Load Data Roles",
+              itemPer.Message,
+              SweetAlertIcon.Error
+              );
+        }
+    }
+    //    private async Task GetPermissionByRole()
+    //    {
+    //        itemPermissions.RoleId = new Guid(roleId);
+
+    //        var itemPer = await permissionService.GetPermissionByRole(roleId);
+    //        if (itemPer.Success == true)
+    //        {
+    //            permissionByRole = itemPer.Data as List<RolePermission>;
+
+    //        }
+    //        else
+    //        {
+    //            await Swal.FireAsync(
+    //              "Load Data Permission",
+    //              itemPer.Message,
+    //              SweetAlertIcon.Error
+    //              );
+    //        }
+    //    }
+}
+
+
+
+
+

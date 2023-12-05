@@ -1,0 +1,266 @@
+﻿@page "/leave_ofday_report"
+@using System.Security.Claims;
+
+@inject TDI.Application.Interfaces.ILeaveService leaveService
+
+<PageTitle>TDI - Leave Of Day Report</PageTitle>
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            @*<h3 class="page-title">User Manager 1</h3>*@
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Leave</a></li>
+                <li class="breadcrumb-item active">Leave Of Day Report</li>
+            </ul>
+        </div>
+        <div class="col-auto ml-auto" style="text-align:right">
+            <DxButton class="btn add-btn" Click="() => ExportXlsx_Click() " IconCssClass="fa fa-file-excel-o" Text="Export Excel" RenderStyle="ButtonRenderStyle.None" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .alt-item > td {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .header-bold span {
+        font-weight: 700;
+    }
+</style>
+
+<div style="margin-top:10px; margin-bottom: 10px;">
+    <DxCheckBox Checked="@IsOfMonth" CheckedChanged="@((bool value) => LeaveOfMonth_CheckedChanged(value))">Leave Of Month</DxCheckBox>
+</div>
+
+@* PageSize="20"
+        PagerPosition="GridPagerPosition.Bottom"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 5, 10, 20, 100 })"
+        PageSizeSelectorAllRowsItemVisible="true"
+        PagerSwitchToInputBoxButtonCount="20"
+        PagerVisibleNumericButtonCount="20"
+        EditMode="GridEditMode.PopupEditForm"
+        PopupEditFormCssClass="pw-800"
+        CustomizeElement="Grid_CustomizeElement"
+        ShowSearchBox="true"
+        ValidationEnabled="true" *@
+
+<DxGrid @ref="Grid"
+        Data="@DataSource"
+        ShowFilterRow="true"
+        SelectionMode="GridSelectionMode.Single"
+        AllowSelectRowByClick="true">
+    <Columns>
+        <DxGridDataColumn FieldName="FullName" MinWidth="50" Caption="UserName" />
+        <DxGridDataColumn FieldName="LeaveFrom" MinWidth="50" TextAlignment="GridTextAlignment.Center" DisplayFormat="{0:dd/MM/yyyy}" Visible="@IsOfMonth" />
+        <DxGridDataColumn FieldName="LeaveTo" MinWidth="50" TextAlignment="GridTextAlignment.Center" DisplayFormat="{0:dd/MM/yyyy}" Visible="@IsOfMonth" />
+        <DxGridDataColumn FieldName="AllDayText" MinWidth="50" Caption="AllDay" />
+        <DxGridDataColumn FieldName="IsMorningText" MinWidth="50" Caption="Shift" />
+        <DxGridDataColumn FieldName="Team" MinWidth="50" />
+    </Columns>
+</DxGrid>
+
+@code {
+
+    string Function = "LEAVEOFDAYREPORT";
+    string RoleName = "";
+    string Title = "REPORT";
+    List<RolePermission> permissionList = new List<RolePermission>();
+
+
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private System.Security.Claims.ClaimsPrincipal User { get; set; }
+    IEnumerable<LeaveOfDayModel> DataSource { get; set; }
+    IGrid Grid { get; set; }
+    private int Year { get; set; }
+
+    bool IsOfMonth { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetLeaveOfDayDataAsync();
+
+        //if (authenticationState is not null)
+        //{
+        //    var authState = await authenticationState;
+        //    User = authState?.User;
+        //    Year = DateTime.Now.Year;
+
+        //    //lấy roles
+        //    var Claims = authState.User.Claims;
+        //    //if (Claims != null && Claims.Count() > 0)
+        //    //{
+        //    //    var roleClaim = Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).FirstOrDefault();
+        //    //    RoleName = roleClaim.Value;
+        //    //}
+        //    if (User?.Identity is not null && User.Identity.IsAuthenticated)
+        //    {
+        //        await GetLeaveOfDayDataAsync();
+        //    }
+        //    else
+        //    {
+        //        URLHelper.NavigateTo("/");
+        //    }
+        //}
+
+        //return base.OnInitializedAsync();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (authenticationState is not null)
+            {
+                var authState = await authenticationState;
+                var user = authState?.User;
+                //Username = authState.User.Identity.Name;
+                //lấy roles
+                var Claims = authState.User.Claims;
+                if (Claims != null && Claims.Count() > 0)
+                {
+                    var roleClaim = Claims.Where(x => x.Type == ClaimTypes.Role).FirstOrDefault();
+                    RoleName = roleClaim.Value;
+                }
+                if (user?.Identity is not null && user.Identity.IsAuthenticated)
+                {
+
+                    //lấy quyền
+                    await GetFunctionByRole();
+                    await GetLeaveOfDayDataAsync();
+
+
+                }
+                else
+                {
+                    URLHelper.NavigateTo("/");
+                }
+            }
+        }
+    }
+    public async Task GetFunctionByRole()
+    {
+        try
+        {
+            var result = await commonService.GetRolePermissionByRoleAndFunction(RoleName, Function);
+            if (result.Success)
+            {
+                permissionList = result.Data as List<RolePermission>;
+
+                if (permissionList == null || permissionList.Count <= 0)
+                {
+                    SweetAlertResult resultSwal = await Swal.FireAsync(
+                      " Role Application",
+                        "Permission denied",
+                        SweetAlertIcon.Info
+                     );
+                    if (!string.IsNullOrEmpty(resultSwal.Value))
+                    {
+                        URLHelper.NavigateTo("/index", true);
+                    }
+                }
+            }
+            else
+            {
+                SweetAlertResult resultSwal = await Swal.FireAsync(
+                 "Get Role Permission",
+                  result.Message,
+                 SweetAlertIcon.Error
+                 );
+                if (!string.IsNullOrEmpty(resultSwal.Value))
+                {
+                    URLHelper.NavigateTo("/index", true);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            SweetAlertResult resultSwal = await Swal.FireAsync(
+                  "Load Permision Data",
+                    ex.Message,
+                  SweetAlertIcon.Error
+                  );
+            if (!string.IsNullOrEmpty(resultSwal.Value))
+            {
+                URLHelper.NavigateTo("/index", true);
+            }
+        }
+    }
+    private void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1)
+        {
+            e.CssClass = "alt-item";
+        }
+        if (e.ElementType == GridElementType.HeaderCell)
+        {
+            e.Style = "background-color: rgba(0, 0, 0, 0.08)";
+            e.CssClass = "header-bold";
+        }
+    }
+
+    private async Task GetLeaveOfDayDataAsync()
+    {
+        DataSource = new List<LeaveOfDayModel>();
+        var result = await leaveService.GetWhoLeaveOfDay();
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveOfDayModel> leaves)
+            {
+                DataSource = leaves;
+            }
+        }
+    }
+
+    private async Task GetLeaveOfMonthDataAsync()
+    {
+        DataSource = new List<LeaveOfDayModel>();
+        var result = await leaveService.GetWhoLeaveOfMonth();
+        if (result.Success)
+        {
+            if (result.Data is List<LeaveOfDayModel> leaves)
+            {
+                DataSource = leaves;
+            }
+        }
+    }
+
+    protected async Task ExportXlsx_Click()
+    {
+        if (IsOfMonth)
+        {
+            await Grid.ExportToXlsxAsync("Leave Of Month Report " + DateTime.Now.ToString("yyyyyMMdd"), new GridXlExportOptions());
+        }
+        else
+        {
+            await Grid.ExportToXlsxAsync("Leave Of Day Report " + DateTime.Now.ToString("yyyyyMMdd"), new GridXlExportOptions()
+            {
+                //ExportSelectedRowsOnly = ExportSelectedRowsOnly,
+                //CustomizeCell = OnCustomizeCell
+            });
+        }
+    }
+
+    protected async void LeaveOfMonth_CheckedChanged(bool value)
+    {
+        IsOfMonth = value;
+
+        if (IsOfMonth)
+        {
+            await GetLeaveOfMonthDataAsync();
+            Grid.BeginUpdate();
+            Grid.Data = DataSource;
+            Grid.EndUpdate();
+        }
+        else
+        {
+            await GetLeaveOfDayDataAsync();
+            Grid.BeginUpdate();
+            Grid.Data = DataSource;
+            Grid.EndUpdate();
+        }
+    }
+}

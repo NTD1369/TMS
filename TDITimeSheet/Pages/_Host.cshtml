@@ -1,0 +1,271 @@
+﻿@page "/"
+@*@attribute [Authorize]*@
+
+
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Components.Web
+@namespace TDITimeSheet.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    @* <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0" /> *@
+
+    <base href="~/" />
+    @*<link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />*@
+    @*<link rel="stylesheet" href="css/pulse/bootstrap.min.css" />*@
+    @*<link rel="stylesheet" href="css/bootstrap.min.css" />*@
+
+    @*id="lighttheme"*@
+    <link href="_content/DevExpress.Blazor.Themes/blazing-berry.bs4.min.css" asp-append-version="true" rel="stylesheet" />
+    <link href="TDITimeSheet.styles.css" rel="stylesheet" />
+    <!-- Fontawesome CSS -->
+    <link rel="stylesheet" href="css/font-awesome.min.css">
+
+    <!-- Lineawesome CSS -->
+    <link rel="stylesheet" href="css/line-awesome.min.css">
+
+    @*<link href="~/css/open-iconic/font/css/open-iconic-bootstrap.min.css" rel="stylesheet" />*@
+
+    <link rel="stylesheet" href="css/style.css">
+   
+    @*<link href="css/site.css" rel="stylesheet" />*@
+    @*<link href="_content/Blazored.Modal/blazored-modal.css" rel="stylesheet" />*@
+    @*<link rel="icon" type="image/png" href="favicon.png" />*@
+    <link rel="icon" type="image/png" href="~/img/tdi_logo/tdi_logo.png" />
+
+    <!-- Datatable CSS -->
+   @* <link rel="stylesheet" href="~/assets/css/dataTables.bootstrap4.min.css">
+    <link href="~/assets/plugins/jquery-treegrid/css/jquery.treegrid.css" rel="stylesheet" />*@
+
+    <!-- Datatable CSS -->
+    <link rel="stylesheet" href="~/assets/css/dataTables.bootstrap4.min.css">
+    <link href="~/assets/plugins/jquery-treegrid/css/jquery.treegrid.css" rel="stylesheet" />
+
+    <link href="./assets/css/dataTables.bootstrap4.min.css" rel="stylesheet" />
+    <link href="./assets/css/style-light.css" rel="stylesheet" />
+
+
+    <link href="./assets/css/extra.css" rel="stylesheet" />
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+</head>
+<body class="account-page">
+
+  @* preloader*@
+    <div class="loader-wrapper">
+        <div class="loader">
+        </div>
+        <div class="loader-section section-left"></div>
+        <div class="loader-section section-right"></div>
+    </div>
+
+    @* preloader*@
+
+
+    <component type="typeof(App)" render-mode="ServerPrerendered" />
+
+ @*   <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            An error has occurred. This application may no longer respond until reloaded.
+        </environment>
+        <environment include="Development">
+            An unhandled exception has occurred. See browser dev tools for details.
+        </environment>
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>*@
+
+    <script src="_framework/blazor.server.js"></script>
+    <script src="_content/CurrieTechnologies.Razor.SweetAlert2/sweetAlert2.min.js"></script>
+    @*<script src="_content/Blazored.Modal/blazored.modal.js"></script>*@
+
+
+    <!-- Custom JS -->
+    @*<script src="js/app.js"></script>*@
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <!-- Bootstrap Core JS -->
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <!-- Slimscroll JS -->
+    <script src="js/jquery.slimscroll.min.js"></script>
+
+    <script src="~/assets/js/jquery.dataTables.min.js"></script>
+    <script src="~/assets/js/dataTables.bootstrap4.min.js"></script>
+    <script src="~/assets/plugins/jquery-treegrid/js/jquery.treegrid.min.js"></script>
+
+
+    <script>
+        @*  --preloader*@
+        window.addEventListener('load', function () {
+            document.querySelector('body').classList.add("loaded")
+        });
+        @* preloader*@
+
+
+
+        function init() {
+
+            var $wrapper = $('.main-wrapper');
+            var $pageWrapper = $('.page-wrapper');
+            var $slimScrolls = $('.slimscroll');
+
+            // Sidebar
+
+            var Sidemenu = function () {
+                this.$menuItem = $('#sidebar-menu a');
+            };
+
+            var $this = Sidemenu;
+            $('#sidebar-menu a').on('click', function (e) {
+                if ($(this).parent().hasClass('submenu')) {
+                    e.preventDefault();
+                }
+                if (!$(this).hasClass('subdrop')) {
+                    $('ul', $(this).parents('ul:first')).slideUp(350);
+                    $('a', $(this).parents('ul:first')).removeClass('subdrop');
+                    $(this).next('ul').slideDown(350);
+                    $(this).addClass('subdrop');
+                } else if ($(this).hasClass('subdrop')) {
+                    $(this).removeClass('subdrop');
+                    $(this).next('ul').slideUp(350);
+                }
+            });
+            $('#sidebar-menu ul li.submenu a.active').parents('li:last').children('a:first').addClass('active').trigger('click');
+
+            //Slimroll
+            // Sidebar Slimscroll
+
+            if ($slimScrolls.length > 0) {
+                $slimScrolls.slimScroll({
+                    height: 'auto',
+                    width: '100%',
+                    position: 'right',
+                    size: '7px',
+                    color: '#ccc',
+                    wheelStep: 10,
+                    touchScrollStep: 100
+                });
+                var wHeight = $(window).height() - 60;
+                $slimScrolls.height(wHeight);
+                $('.sidebar .slimScrollDiv').height(wHeight);
+                $(window).resize(function () {
+                    var rHeight = $(window).height() - 60;
+                    $slimScrolls.height(rHeight);
+                    $('.sidebar .slimScrollDiv').height(rHeight);
+                });
+            }
+
+            // Page Content Height
+
+            var pHeight = $(window).height();
+            $pageWrapper.css('min-height', pHeight);
+            $(window).resize(function () {
+                var prHeight = $(window).height();
+                $pageWrapper.css('min-height', prHeight);
+            });
+
+            //Mobilitíes
+            $('body').append('<div class="sidebar-overlay"></div>');
+            $(document).on('click', '#mobile_btn', function () {
+                $wrapper.toggleClass('slide-nav');
+                $('.sidebar-overlay').toggleClass('opened');
+                $('html').addClass('menu-opened');
+                $('#task_window').removeClass('opened');
+                $('#sidebar').addClass('sidebaropened');
+                $('#mobile_btn').addClass('Mobileopened');
+
+                return false;
+            });
+            $(document).on('click', '.Mobileopened', function () {
+
+                $('#sidebar').removeClass('sidebaropened');
+                $('#mobile_btn').removeClass('Mobileopened');
+
+                return false;
+            });
+            $(".sidebar-overlay").on("click", function () {
+                $('html').removeClass('menu-opened');
+                $(this).removeClass('opened');
+                $wrapper.removeClass('slide-nav');
+                $('#sidebar').removeClass('sidebaropened');
+
+                $('.sidebar-overlay').removeClass('opened');
+                $('#task_window').removeClass('opened');
+            });
+
+
+
+            $(document).on('click', '#toggle_btn', function () {
+                if ($('body').hasClass('mini-sidebar')) {
+                    $('body').removeClass('mini-sidebar');
+                    $('.subdrop + ul').slideDown();
+                } else {
+                    $('body').addClass('mini-sidebar');
+                    $('.subdrop + ul').slideUp();
+                }
+                return false;
+            });
+            $(document).on('mouseover', function (e) {
+                e.stopPropagation();
+                if ($('body').hasClass('mini-sidebar') && $('#toggle_btn').is(':visible')) {
+                    var targ = $(e.target).closest('.sidebar').length;
+                    if (targ) {
+                        $('body').addClass('expand-menu');
+                        $('.subdrop + ul').slideDown();
+                    } else {
+                        $('body').removeClass('expand-menu');
+                        $('.subdrop + ul').slideUp();
+                    }
+                    return false;
+                }
+            });
+
+            $(document).on('click', '.top-nav-search .responsive-search', function () {
+                $('.top-nav-search').toggleClass('active');
+            });
+
+            $(document).on('click', '#file_sidebar_toggle', function () {
+                $('.file-wrap').toggleClass('file-sidebar-toggle');
+            });
+
+            $(document).on('click', '.file-side-close', function () {
+                $('.file-wrap').removeClass('file-sidebar-toggle');
+            });
+
+            if ($('.kanban-wrap').length > 0) {
+                $(".kanban-wrap").sortable({
+                    connectWith: ".kanban-wrap",
+                    handle: ".kanban-box",
+                    placeholder: "drag-placeholder"
+                });
+            }
+
+        }
+
+        function initTreeGrid() {
+            $('.tree').treegrid();
+        }
+
+        //test:
+        function printPage1()
+        { 
+            window.print();
+        }
+        function CallPage1() {
+            var url = "RPT1Test";
+            Main.openCustomDialog(url, 220, 200, "Cancel DO");
+        }
+
+        window.triggerFileDownload = (fileName, url) => {
+            const anchorElement = document.createElement('a');
+            anchorElement.href = url;
+            anchorElement.download = fileName ?? '';
+            anchorElement.click();
+            anchorElement.remove();
+        }
+    </script>
+</body>
+</html>
